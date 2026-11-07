@@ -9,6 +9,7 @@ import { Counter } from "@/components/Counter";
 import { MediaImage } from "@/components/MediaInputs";
 import { DemoBadge } from "@/components/ui";
 import { countdown, formatDate, nextAnniversary, ordinal } from "@/lib/time";
+import { getAuthoritativeTodayReason, type JarReason } from "@/lib/jar";
 
 const EXPERIENCES = [
   { href: "/memories", title: "Our Constellation", body: "A custom night sky where every star is a moment.", icon: Stars, hue: "from-[#E8B9D0]/40 to-[#8D78B5]/30" },
@@ -16,7 +17,7 @@ const EXPERIENCES = [
   { href: "/letters", title: "Love letters", body: "Open when you need them.", icon: Mail, hue: "from-[#F8E8D8]/40 to-[#E8B9D0]/25" },
   { href: "/photobooth", title: "Photobooth", body: "Four frames, one strip, one keepsake.", icon: Camera, hue: "from-[#8D78B5]/40 to-[#E8B9D0]/25" },
   { href: "/timeline", title: "Our timeline", body: "A constellation of firsts.", icon: Clock3, hue: "from-[#C9BCE8]/35 to-[#F8E8D8]/20" },
-  { href: "/reasons", title: "Jar of reasons", body: "One reason at a time, until 365.", icon: Sparkles, hue: "from-[#E8B9D0]/35 to-[#C9BCE8]/30" },
+  { href: "/reasons", title: "Jars of reasons", body: "365 reasons why I love you.", icon: Sparkles, hue: "from-[#E8B9D0]/35 to-[#C9BCE8]/30" },
   { href: "/soundtrack", title: "Our soundtrack", body: "The songs that hold our moments.", icon: Music2, hue: "from-[#40345C]/50 to-[#8D78B5]/35" },
   { href: "/bucket-list", title: "Future together", body: "Everything we haven’t done yet.", icon: Target, hue: "from-[#F8E8D8]/30 to-[#8D78B5]/30" }
 ];
@@ -29,26 +30,23 @@ type Song = Row & { title: string; artist?: string; is_favourite?: boolean };
 export default function Universe() {
   const { me, partner, startDate, relationship, unlocks } = useApp();
   const memories = useCollection<Memory>("memories", { order: "created_at", ascending: false });
-  const reasons = useCollection<Reason>("reasons", { realtime: false });
   const goals = useCollection<Goal>("bucket_list", { order: "created_at" });
   const songs = useCollection<Song>("songs", { realtime: false });
-  const [reasonIdx, setReasonIdx] = useState(0);
   const [now, setNow] = useState<Date | null>(null);
+  const [todayReason, setTodayReason] = useState<{ reason: JarReason; sequence: number } | null>(null);
 
   useEffect(() => {
     setNow(new Date());
+    getAuthoritativeTodayReason().then((res) => {
+      setTodayReason({ reason: res.reason, sequence: res.sequence });
+    });
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    if (reasons.items.length) setReasonIdx(Math.floor(Math.random() * reasons.items.length));
-  }, [reasons.items.length]);
-
   const anniversary = now ? nextAnniversary(startDate, now) : null;
   const left = anniversary && now ? countdown(anniversary.date, now) : null;
   const featured = useMemo(() => memories.items.find((m) => m.image_paths?.length), [memories.items]);
-  const reason = reasons.items[reasonIdx];
   const upcoming = goals.items.filter((g) => !g.completed).slice(0, 3);
   const song = songs.items.find((s) => s.is_favourite) ?? songs.items[0];
   const hour = now?.getHours() ?? 12;
@@ -199,27 +197,23 @@ export default function Universe() {
         {/* Reasons Jar */}
         <div className="paper relative flex flex-col justify-between rounded-[24px] p-6 shadow-2xl">
           <div>
-            <p className="text-xs uppercase tracking-widest text-[#6b5a86] font-bold">From the jar</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs uppercase tracking-widest text-[#6b5a86] font-bold">From the jar</p>
+              {todayReason && (
+                <span className="text-xs font-semibold text-[#8D78B5]">
+                  Reason {todayReason.sequence.toString().padStart(3, "0")} of 365
+                </span>
+              )}
+            </div>
             <p className="mt-3 font-hand text-2xl leading-snug">
-              {reason ? reason.content : "The jar is empty. Drop in your first reason."}
+              {todayReason ? `“${todayReason.reason.reason_text}”` : "One little reminder, every single day."}
             </p>
           </div>
           <div className="mt-6 flex items-center justify-between text-sm">
-            <Link href="/reasons" className="text-[#6b5a86] underline-offset-4 hover:underline font-medium">
-              Open the jar
+            <Link href="/reasons" className="text-[#6b5a86] underline-offset-4 hover:underline font-medium flex items-center gap-1">
+              <Sparkles className="h-4 w-4 text-[#D4AF37]" /> Open the jar
             </Link>
-            {reasons.items.length > 1 && (
-              <motion.button
-                whileTap={{ rotate: 180, scale: 0.9 }}
-                onClick={() =>
-                  setReasonIdx((i) => (i + 1 + Math.floor(Math.random() * (reasons.items.length - 1))) % reasons.items.length)
-                }
-                className="flex items-center gap-1.5 text-[#6b5a86] font-medium hover:text-midnight transition"
-                aria-label="Show another reason"
-              >
-                <Shuffle className="h-4 w-4" /> Another
-              </motion.button>
-            )}
+            <span className="text-xs text-[#8D78B5]">Today in IST</span>
           </div>
         </div>
 

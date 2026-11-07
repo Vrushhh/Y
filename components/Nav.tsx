@@ -17,7 +17,7 @@ const PRIMARY = [
 
 export const MORE = [
   { href: "/timeline", label: "Timeline", icon: Clock3 },
-  { href: "/reasons", label: "Reasons jar", icon: Sparkles },
+  { href: "/reasons", label: "Jars of reasons", icon: Sparkles },
   { href: "/photobooth", label: "Photobooth", icon: Camera },
   { href: "/soundtrack", label: "Soundtrack", icon: Music2 },
   { href: "/bucket-list", label: "Future together", icon: Target },
