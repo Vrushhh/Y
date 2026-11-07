@@ -24,30 +24,61 @@ type Stage = "ticket" | "envelope" | "opening" | "letter";
 
 export default function Welcome() {
   const router = useRouter();
-  const { mode, ready, userId, relationship } = useApp();
+  const { mode, ready, userId, relationship, toast } = useApp();
   const reducedMotion = useReducedMotion();
   const [stage, setStage] = useState<Stage>("ticket");
   const [now, setNow] = useState<Date | null>(null);
-  const [checkInData, setCheckInData] = useState<CheckInData | null>(null);
+  const [localCheckIn, setLocalCheckIn] = useState<CheckInData | null>(null);
+  const [accountCheckIn, setAccountCheckIn] = useState<{ userId: string; data: CheckInData | null; failed?: boolean } | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const savingCheckIn = useRef(false);
+  const localCheckInMode = mode === "preview" || preview !== null;
+  const savedAccountCheckIn = accountCheckIn?.userId === userId ? accountCheckIn : null;
+  const checkInData = localCheckInMode ? localCheckIn : savedAccountCheckIn?.data ?? null;
+  const checkInLoading = !ready || (!localCheckInMode && !!userId && !savedAccountCheckIn);
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [stubTorn, setStubTorn] = useState(false);
   const envelopeButton = useRef<HTMLButtonElement>(null);
   const letterHeading = useRef<HTMLHeadingElement>(null);
 
-  // Load check-in data from localStorage
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("olu:checkin");
-        if (stored) {
-          setCheckInData(JSON.parse(stored));
-        }
-      } catch (e) {
-        console.error("Failed to parse check-in data:", e);
-      }
+    if (process.env.NODE_ENV === "development") {
+      setPreview(new URLSearchParams(window.location.search).get("boarding-preview"));
     }
   }, []);
+
+  useEffect(() => {
+    if (!localCheckInMode) return;
+    const key = mode === "preview" ? "olu:checkin" : "olu:checkin-dev";
+    try {
+      const stored = localStorage.getItem(key);
+      setLocalCheckIn(stored ? JSON.parse(stored) : preview === "carry-on" ? {
+        seat: "Window seat, holding your hand",
+        memory: "Watching the night sky together and talking until morning.",
+        firstStop: "A cosy night in",
+        checkedInAt: ISSUED.toISOString()
+      } : null);
+    } catch {
+      setLocalCheckIn(null);
+    }
+  }, [localCheckInMode, mode, preview]);
+
+  useEffect(() => {
+    if (localCheckInMode || !userId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const { data, error } = await getSupabase()!.from("user_preferences")
+          .select("boarding_checkin").eq("user_id", userId).maybeSingle();
+        if (error) throw error;
+        if (active) setAccountCheckIn({ userId, data: data?.boarding_checkin ?? null });
+      } catch {
+        if (active) setAccountCheckIn({ userId, data: null, failed: true });
+      }
+    })();
+    return () => { active = false; };
+  }, [localCheckInMode, userId]);
 
   // Generate scannable QR Code for the live website
   useEffect(() => {
@@ -66,34 +97,20 @@ export default function Welcome() {
 
   // Preview and time tick logic
   useEffect(() => {
-    const preview = typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("boarding-preview")
-      : null;
-
-    // Default sample check-in if previewing carry-on without prior check-in
-    if (preview === "carry-on" && !checkInData) {
-      setCheckInData({
-        seat: "Window seat, holding your hand",
-        memory: "Watching the night sky together and talking until morning.",
-        firstStop: "A cosy night in",
-        checkedInAt: new Date().toISOString()
-      });
-    }
-
     const offset =
       preview === "carry-on" || preview === "checkin"
         ? ISSUED.getTime() - Date.now() + 60_000
         : preview === "departure"
         ? DEPARTURE.getTime() - Date.now() + 60_000
         : preview === "pre-checkin"
-        ? -100_000_000
+        ? ISSUED.getTime() - Date.now() - 86_400_000
         : 0;
 
     const tick = () => setNow(new Date(Date.now() + offset));
     tick();
     const interval = window.setInterval(tick, 1000);
     return () => window.clearInterval(interval);
-  }, [checkInData]);
+  }, [preview]);
 
   useEffect(() => {
     if (stage !== "opening") return;
@@ -106,17 +123,26 @@ export default function Welcome() {
   const signedOut = mode === "supabase" && !userId;
   const left = now ? countdown(issued ? DEPARTURE : ISSUED, now) : null;
 
-  const handleCheckInComplete = (data: CheckInData) => {
-    setCheckInData(data);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("olu:checkin", JSON.stringify(data));
+  const handleCheckInComplete = async (data: CheckInData) => {
+    if (savingCheckIn.current) return;
+    savingCheckIn.current = true;
+    try {
+      if (localCheckInMode) {
+        localStorage.setItem(mode === "preview" ? "olu:checkin" : "olu:checkin-dev", JSON.stringify(data));
+        setLocalCheckIn(data);
+      } else {
+        if (!userId) throw new Error("Sign in before checking in.");
+        const { error } = await getSupabase()!.from("user_preferences")
+          .upsert({ user_id: userId, boarding_checkin: data }, { onConflict: "user_id" });
+        if (error) throw error;
+        setAccountCheckIn({ userId, data });
+      }
+      setCheckInModalOpen(false);
+    } catch {
+      toast("Your check-in couldn’t be saved. Please try again.", "error");
+    } finally {
+      savingCheckIn.current = false;
     }
-    if (mode === "supabase" && userId) {
-      void getSupabase()
-        ?.from("user_preferences")
-        .upsert({ user_id: userId, checkin_completed: true }, { onConflict: "user_id" });
-    }
-    setCheckInModalOpen(false);
   };
 
   const board = () => {
@@ -308,12 +334,20 @@ export default function Welcome() {
                     <div className="pt-2">
                       <Button
                         size="lg"
-                        onClick={() => setCheckInModalOpen(true)}
+                        disabled={checkInLoading || savedAccountCheckIn?.failed}
+                        onClick={() => {
+                          if (signedOut && !localCheckInMode) router.push("/login?next=%2F");
+                          else setCheckInModalOpen(true);
+                        }}
                         className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110 text-base px-8 py-3"
                       >
                         <Plane className="h-5 w-5 mr-2" /> Check in for our next orbit
                       </Button>
                     </div>
+
+                    {savedAccountCheckIn?.failed && (
+                      <p role="alert" className="text-sm text-blush">Your check-in couldn’t load. Reload the ticket to try again.</p>
+                    )}
 
                     <div className="pt-2 border-t border-lilac/10 text-xs text-lilac flex items-center justify-center gap-2">
                       <span>Departure in:</span>
