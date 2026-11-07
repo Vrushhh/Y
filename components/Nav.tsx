@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Camera, Clock3, Gamepad2, Home, Hourglass, Mail, MapPin, Music2, MoreHorizontal, Settings, Sparkles, Star, Stars, Target, X
+  Camera, Clock3, Gamepad2, Home, Hourglass, Mail, Music2, MoreHorizontal, Settings, Sparkles, Star, Stars, Target, X
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -35,56 +35,132 @@ export function Nav() {
 
   return (
     <>
-      {/* Desktop: floating sidebar */}
-      <nav aria-label="Main" className="glass fixed left-5 top-1/2 z-40 hidden -translate-y-1/2 flex-col gap-1 rounded-[24px] p-2 lg:flex">
-        {[...PRIMARY, ...MORE].map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href} href={href} aria-label={label}
-            className={clsx(
-              "group relative flex h-11 w-11 items-center justify-center rounded-2xl transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush/70",
-              isActive(path, href) ? "bg-gradient-to-br from-blush/90 to-lilac/90 text-midnight" : "text-lilac hover:bg-cloud/10 hover:text-cloud"
-            )}
-          >
-            <Icon className="h-[18px] w-[18px]" />
-            <span className="pointer-events-none absolute left-14 whitespace-nowrap rounded-xl bg-midnight/95 px-3 py-1.5 text-xs text-cloud opacity-0 shadow-soft transition group-hover:opacity-100 group-focus-visible:opacity-100">
-              {label}
-            </span>
-          </Link>
-        ))}
+      {/* Desktop: floating sidebar with fluid sliding layout pill */}
+      <nav aria-label="Main" className="glass fixed left-5 top-1/2 z-40 hidden -translate-y-1/2 flex-col gap-1.5 rounded-[26px] p-2 lg:flex shadow-2xl border border-lilac/20">
+        {[...PRIMARY, ...MORE].map(({ href, label, icon: Icon }) => {
+          const active = isActive(path, href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-label={label}
+              className="group relative flex h-11 w-11 items-center justify-center rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush/70"
+            >
+              {/* Sliding glowing liquid active indicator */}
+              {active && (
+                <motion.div
+                  layoutId="desktopActiveNav"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-br from-blush to-lilac shadow-glow"
+                />
+              )}
+
+              <motion.div
+                whileHover={{ scale: 1.15 }}
+                whileTap={{ scale: 0.92 }}
+                className={clsx(
+                  "relative z-10 flex items-center justify-center transition-colors duration-200",
+                  active ? "text-midnight font-bold" : "text-lilac group-hover:text-cloud"
+                )}
+              >
+                <Icon className="h-[19px] w-[19px]" />
+              </motion.div>
+
+              {/* Tooltip */}
+              <span className="pointer-events-none absolute left-14 whitespace-nowrap rounded-xl bg-midnight/95 px-3 py-1.5 text-xs text-cloud opacity-0 shadow-soft transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-1 group-focus-visible:opacity-100 border border-lilac/15">
+                {label}
+              </span>
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* Mobile: bottom bar */}
-      <nav aria-label="Main" className="glass-strong fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 flex justify-around rounded-[22px] px-2 py-1.5 lg:hidden">
-        {PRIMARY.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} className={clsx("flex min-w-[60px] flex-col items-center gap-0.5 rounded-2xl px-2 py-1.5 text-[11px]", isActive(path, href) ? "text-blush" : "text-lilac")}>
-            <Icon className="h-5 w-5" />
-            {label}
-          </Link>
-        ))}
-        <button onClick={() => setMore(true)} className={clsx("flex min-w-[60px] flex-col items-center gap-0.5 rounded-2xl px-2 py-1.5 text-[11px]", moreActive ? "text-blush" : "text-lilac")} aria-haspopup="dialog">
-          <MoreHorizontal className="h-5 w-5" />
-          More
+      {/* Mobile: bottom floating dock with fluid sliding pill */}
+      <nav aria-label="Main" className="glass-strong fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 flex justify-around rounded-[24px] px-2 py-1.5 lg:hidden shadow-2xl border border-lilac/25">
+        {PRIMARY.map(({ href, label, icon: Icon }) => {
+          const active = isActive(path, href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={clsx(
+                "relative flex min-w-[62px] flex-col items-center gap-0.5 rounded-2xl px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                active ? "text-blush" : "text-lilac/90"
+              )}
+            >
+              {active && (
+                <motion.div
+                  layoutId="mobileActiveNav"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  className="absolute inset-0 rounded-2xl bg-cloud/10 border border-blush/25"
+                />
+              )}
+              <motion.div whileTap={{ scale: 0.88 }} className="relative z-10 flex flex-col items-center">
+                <Icon className="h-5 w-5" />
+                <span>{label}</span>
+              </motion.div>
+            </Link>
+          );
+        })}
+
+        <button
+          onClick={() => setMore(true)}
+          className={clsx(
+            "relative flex min-w-[62px] flex-col items-center gap-0.5 rounded-2xl px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+            moreActive ? "text-blush" : "text-lilac/90"
+          )}
+          aria-haspopup="dialog"
+        >
+          {moreActive && (
+            <motion.div
+              layoutId="mobileActiveNav"
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="absolute inset-0 rounded-2xl bg-cloud/10 border border-blush/25"
+            />
+          )}
+          <motion.div whileTap={{ scale: 0.88 }} className="relative z-10 flex flex-col items-center">
+            <MoreHorizontal className="h-5 w-5" />
+            <span>More</span>
+          </motion.div>
         </button>
       </nav>
 
+      {/* Mobile More Sheet */}
       <AnimatePresence>
         {more && (
           <motion.div className="fixed inset-0 z-50 lg:hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-midnight/70 backdrop-blur-sm" onClick={() => setMore(false)} />
+            <div className="absolute inset-0 bg-midnight/70 backdrop-blur-md" onClick={() => setMore(false)} />
             <motion.div
-              role="dialog" aria-label="More places"
-              className="glass-strong absolute inset-x-0 bottom-0 rounded-t-[28px] p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
-              initial={{ y: 300 }} animate={{ y: 0 }} exit={{ y: 300 }} transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              drag="y" dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: 0.6 }}
+              role="dialog"
+              aria-label="More places"
+              className="glass-strong absolute inset-x-0 bottom-0 rounded-t-[28px] p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] border-t border-lilac/25"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.6 }}
               onDragEnd={(_, info) => info.offset.y > 80 && setMore(false)}
             >
+              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-lilac/30" />
               <div className="mb-4 flex items-center justify-between">
-                <span className="font-display text-xl">More of our universe</span>
-                <button onClick={() => setMore(false)} aria-label="Close" className="rounded-full p-1.5 text-lilac"><X className="h-5 w-5" /></button>
+                <span className="font-display text-2xl text-cloud">More of our universe</span>
+                <button onClick={() => setMore(false)} aria-label="Close" className="rounded-full p-2 text-lilac hover:bg-cloud/10">
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2.5">
                 {MORE.map(({ href, label, icon: Icon }) => (
-                  <Link key={href} href={href} onClick={() => setMore(false)} className={clsx("flex flex-col items-center gap-2 rounded-2xl p-3 text-center text-[11px]", isActive(path, href) ? "bg-cloud/10 text-blush" : "text-lilac")}>
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => setMore(false)}
+                    className={clsx(
+                      "flex flex-col items-center gap-2 rounded-2xl p-3 text-center text-[11px] font-medium transition active:scale-95",
+                      isActive(path, href) ? "bg-cloud/15 text-blush border border-blush/30" : "text-lilac hover:bg-cloud/5"
+                    )}
+                  >
                     <Icon className="h-6 w-6" />
                     {label}
                   </Link>
