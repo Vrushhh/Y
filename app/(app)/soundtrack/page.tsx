@@ -5,6 +5,7 @@ import { ExternalLink, Pause, Play, Plus, Star, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { useApp } from "@/components/providers/AppProvider";
 import { authorOf, useCollection, type Row } from "@/lib/useCollection";
+import { useSoundtrackPlayer } from "@/components/BackgroundMusic";
 import { toEmbedUrl } from "@/lib/embed";
 import { Button, DemoBadge, EmptyState, ErrorNote, Field, IconButton, Input, Modal, PageHeader, Spinner, TextArea } from "@/components/ui";
 import { ImagePicker, MediaImage } from "@/components/MediaInputs";
@@ -17,12 +18,21 @@ export default function Soundtrack() {
   const { nameOf, toast } = useApp();
   const { items, loading, add, update, remove } = useCollection<Song>("songs", { order: "created_at" });
   const [currentId, setCurrentId] = useState<string | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const player = useSoundtrackPlayer();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(blank);
   const [error, setError] = useState<string | null>(null);
-  const current = items.find((s) => s.id === currentId) ?? items[0];
-  const embed = toEmbedUrl(current?.external_url);
+  const current = items.find((s) => s.id === (currentId ?? player?.selected?.id)) ?? items[0];
+  const isSelected = !!current && player?.selected?.id === current.id;
+  const embedded = isSelected && !!toEmbedUrl(current?.external_url);
+  const playing = isSelected && !!player?.playing;
+
+  const play = (song: Song) => {
+    setCurrentId(song.id);
+    if (!song.external_url || !player?.select({ id: song.id, title: song.title, artist: song.artist, url: song.external_url })) {
+      toast("Add a Spotify, YouTube, or direct audio link to play this track.", "info");
+    }
+  };
 
   const save = async () => {
     if (!form.title.trim()) return setError("Add the song title.");
@@ -35,7 +45,7 @@ export default function Soundtrack() {
 
   return (
     <div>
-      <PageHeader title="Our soundtrack" subtitle="The songs that hold our moments. Paste a Spotify or YouTube link to play it right here." action={<Button variant="soft" onClick={() => { setError(null); setOpen(true); }}><Plus className="h-4 w-4" /> Add a song</Button>} />
+      <PageHeader title="Our soundtrack" subtitle="The songs that hold our moments. Select a song to play it as you move through the site." action={<Button variant="soft" onClick={() => { setError(null); setOpen(true); }}><Plus className="h-4 w-4" /> Add a song</Button>} />
 
       {items.length === 0 ? (
         <EmptyState title="No songs yet" body="Which song was playing the first time it felt like something?" action={<Button onClick={() => setOpen(true)}>Add our first song</Button>} />
@@ -58,20 +68,17 @@ export default function Soundtrack() {
               {current?.memory_note && <p className="mx-auto mt-3 max-w-sm font-hand text-xl text-blush">{current.memory_note}</p>}
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => setPlaying(!playing)} aria-pressed={playing}>{playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />} {playing ? "Pause the record" : "Spin the record"}</Button>
+              {current && !embedded && <Button onClick={() => isSelected ? player?.toggle() : play(current)}>{playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />} {playing ? "Pause the record" : "Play the record"}</Button>}
               {current?.external_url && <a href={current.external_url} target="_blank" rel="noreferrer"><Button variant="soft"><ExternalLink className="h-4 w-4" /> Open</Button></a>}
             </div>
-            {playing && embed && (
-              <iframe title={`Player for ${current?.title}`} src={embed} className="h-[152px] w-full max-w-md rounded-2xl border-0" allow="encrypted-media; picture-in-picture" loading="lazy" />
-            )}
-            {playing && !embed && <p className="text-xs text-lilac/70">Add a Spotify or YouTube link to play it here. Nothing plays until you press play.</p>}
+            {embedded && <p className="text-xs text-lilac">Use the floating player if your browser asks you to press Play.</p>}
           </div>
 
           <ol className="glass divide-y divide-lilac/10 self-start rounded-[22px]">
             {items.map((s, i) => (
               <li key={s.id} className={clsx("flex items-center gap-4 px-5 py-4", s.id === current?.id && "bg-cloud/5")}>
                 <span className="num w-5 text-right font-display text-lg text-lilac/60">{i + 1}</span>
-                <button className="min-w-0 flex-1 text-left" onClick={() => { setCurrentId(s.id); setPlaying(false); }}>
+                <button className="min-w-0 flex-1 text-left" data-music-control onClick={() => play(s)}>
                   <span className="block truncate text-cloud">{s.title} <DemoBadge show={s.is_demo} /></span>
                   <span className="block truncate text-sm text-lilac">{[s.artist, `added by ${nameOf(authorOf(s))}`, formatDate(s.created_at, { day: "numeric", month: "short" })].filter(Boolean).join(", ")}</span>
                 </button>
@@ -87,7 +94,7 @@ export default function Soundtrack() {
         <div className="space-y-4">
           <Field label="Song"><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} autoFocus /></Field>
           <Field label="Artist"><Input value={form.artist} onChange={(e) => setForm({ ...form, artist: e.target.value })} /></Field>
-          <Field label="Link" hint="Spotify and YouTube links play inside the app. Other links open in a new tab."><Input value={form.external_url} onChange={(e) => setForm({ ...form, external_url: e.target.value })} placeholder="https://open.spotify.com/track/…" /></Field>
+          <Field label="Link" hint="Use Spotify, YouTube, or a direct audio link such as an MP3."><Input value={form.external_url} onChange={(e) => setForm({ ...form, external_url: e.target.value })} placeholder="https://open.spotify.com/track/…" /></Field>
           <Field label="Why this song"><TextArea className="min-h-[90px]" value={form.memory_note} onChange={(e) => setForm({ ...form, memory_note: e.target.value })} /></Field>
           <ImagePicker value={form.art} onChange={(art) => setForm({ ...form, art })} folder="songs" label="Add artwork" />
           <ErrorNote message={error} />

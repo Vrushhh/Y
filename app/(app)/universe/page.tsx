@@ -13,6 +13,7 @@ import { countdown, formatDate, nextAnniversary, ordinal } from "@/lib/time";
 import { getAuthoritativeTodayReason, type JarReason } from "@/lib/jar";
 
 const EXPERIENCES = [
+  { href: "/our-days", title: "Our days", body: "One Second of Us, a weekly question, and Then & Now.", icon: Camera, hue: "from-[#E8B9D0]/40 to-[#40345C]/30" },
   { href: "/memories", title: "Our Constellation", body: "A custom night sky where every star is a moment.", icon: Stars, hue: "from-[#E8B9D0]/40 to-[#8D78B5]/30" },
   { href: "/date-mode", title: "Two-player date mode", body: "Play from two phones, reveal together.", icon: Gamepad2, hue: "from-[#C9BCE8]/40 to-[#40345C]/40" },
   { href: "/letters", title: "Love letters", body: "Open when you need them.", icon: Mail, hue: "from-[#F8E8D8]/40 to-[#E8B9D0]/25" },
