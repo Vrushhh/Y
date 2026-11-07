@@ -386,6 +386,20 @@ export function VirtualMuseum() {
     [relationship?.id]
   );
 
+  // Check proximity to exhibits
+  const checkProximity = useCallback(
+    (x: number, y: number) => {
+      // If near velvet bench (x: 550, y: 530)
+      if (Math.hypot(x - 550, y - 530) < 55) {
+        setSittingTogether(true);
+        playSound("sit");
+      } else {
+        setSittingTogether(false);
+      }
+    },
+    [playSound]
+  );
+
   // Smoothly move avatar to target coordinate
   const moveTo = useCallback(
     (targetX: number, targetY: number) => {
@@ -409,19 +423,8 @@ export function VirtualMuseum() {
       // Check proximity to any exhibits
       checkProximity(clampedX, clampedY);
     },
-    [myPos.x, isHoldingHands, playSound, broadcast]
+    [myPos.x, isHoldingHands, playSound, broadcast, checkProximity]
   );
-
-  // Check proximity to exhibits
-  const checkProximity = (x: number, y: number) => {
-    // If near velvet bench (x: 550, y: 530)
-    if (Math.hypot(x - 550, y - 530) < 55) {
-      setSittingTogether(true);
-      playSound("sit");
-    } else {
-      setSittingTogether(false);
-    }
-  };
 
   // Click on floor to walk
   const handleFloorClick = (e: React.MouseEvent<HTMLDivElement>) => {
