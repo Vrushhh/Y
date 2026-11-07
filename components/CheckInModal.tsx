@@ -342,3 +342,4 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
     </div>
   );
 }
+

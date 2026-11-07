@@ -27,3 +27,4 @@ describe("Boarding Pass User Journey", () => {
     expect(checkin.firstStop).toBe("A spontaneous day out");
   });
 });
+
