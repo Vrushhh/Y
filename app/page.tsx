@@ -13,9 +13,10 @@ import { Envelope } from "@/components/Envelope";
 import { Starfield } from "@/components/Starfield";
 import { Button } from "@/components/ui";
 import { useApp } from "@/components/providers/AppProvider";
-import { SITE_URL } from "@/lib/config";
 import { getSupabase } from "@/lib/supabase/client";
 import { countdown } from "@/lib/time";
+
+const LIVE_BOARDING_PASS_URL = "https://our-little-universe-umber-phi.vercel.app/";
 
 const ISSUED = new Date("2026-11-14T00:00:00+05:30");
 const DEPARTURE = new Date("2026-11-16T00:00:00+05:30");
@@ -82,8 +83,7 @@ export default function Welcome() {
 
   // Generate scannable QR Code for the live website
   useEffect(() => {
-    const origin = typeof window !== "undefined" ? window.location.origin : SITE_URL;
-    QRCode.toDataURL(origin, {
+    QRCode.toDataURL(LIVE_BOARDING_PASS_URL, {
       margin: 1,
       width: 140,
       color: {
@@ -193,23 +193,6 @@ export default function Welcome() {
           >
             {/* The Authentic Airline Boarding Pass */}
             <article className="relative overflow-hidden rounded-[28px] bg-cream text-midnight shadow-2xl sm:grid sm:grid-cols-[minmax(0,1fr)_12rem] border border-lilac/30">
-              {/* VINTAGE CHECKED IN RUBBER STAMP */}
-              <AnimatePresence>
-                {checkInData && (
-                  <motion.div
-                    initial={{ scale: 2.2, opacity: 0, rotate: -28 }}
-                    animate={{ scale: 1, opacity: 0.95, rotate: -13 }}
-                    transition={{ type: "spring", stiffness: 350, damping: 18 }}
-                    className="pointer-events-none absolute right-4 top-16 z-30 sm:right-32 sm:top-20"
-                    aria-label="Checked In Stamp"
-                  >
-                    <div className="rounded-xl border-[3.5px] border-dashed border-[#b32b4b] px-4 py-1.5 font-mono text-lg font-black uppercase tracking-[0.25em] text-[#b32b4b] shadow-[0_0_20px_rgba(179,43,75,0.25)] sm:text-2xl">
-                      ★ CHECKED IN • 14 NOV ★
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
               {/* Main Ticket Body */}
               <div className="p-6 sm:p-8">
                 <div className="flex items-center justify-between">
@@ -258,6 +241,17 @@ export default function Welcome() {
                   <p className="font-display text-5xl leading-none sm:text-7xl text-midnight font-medium">
                     16
                   </p>
+                  {checkInData && (
+                    <motion.div
+                      initial={reducedMotion ? false : { scale: 1.18, opacity: 0, rotate: -8 }}
+                      animate={{ scale: 1, opacity: 1, rotate: -3 }}
+                      transition={{ duration: reducedMotion ? 0 : 0.25 }}
+                      className="mt-3 inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border-2 border-double border-[#9a2847] bg-cream/50 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-[#9a2847]"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      Checked in
+                    </motion.div>
+                  )}
                 </div>
 
                 {/* Scannable Website QR Code & Barcode */}
