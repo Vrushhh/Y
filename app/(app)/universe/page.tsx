@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Camera, Clock3, Gamepad2, Mail, Music2, Shuffle, Sparkles, Star, Stars, Target } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
 import { useCollection, type Row } from "@/lib/useCollection";
+import { DashboardMusicPlayer } from "@/components/BackgroundMusic";
 import { Counter } from "@/components/Counter";
 import { MediaImage } from "@/components/MediaInputs";
 import { DemoBadge } from "@/components/ui";
@@ -74,6 +75,7 @@ export default function Universe() {
               {relationship?.name ?? "Our Little Universe"}
             </motion.h1>
             <p className="mt-3 font-romance italic text-lilac/90 text-lg">Two people. One universe. Infinite memories.</p>
+            <DashboardMusicPlayer />
           </div>
 
           <div className="flex flex-wrap items-end gap-x-10 gap-y-6">

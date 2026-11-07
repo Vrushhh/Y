@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { Pause, Play } from "lucide-react";
 
 const PAUSED_KEY = "olu:background-music-paused";
 
-export function BackgroundMusic() {
+const MusicControls = createContext<{ playing: boolean; toggle: () => void } | null>(null);
+
+export function BackgroundMusic({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const audio = useRef<HTMLAudioElement>(null);
-  const control = useRef<HTMLButtonElement>(null);
   const optedOut = useRef(false);
   const [playing, setPlaying] = useState(false);
 
@@ -26,7 +29,7 @@ export function BackgroundMusic() {
       if (!optedOut.current && track.paused) void track.play().catch(() => undefined);
     };
     const onFirstClick = (event: MouseEvent) => {
-      if (control.current?.contains(event.target as Node)) return;
+      if (event.target instanceof Element && event.target.closest("[data-music-control]")) return;
       playIfAllowed();
     };
     const stopAutoStart = () => document.removeEventListener("click", onFirstClick, true);
@@ -62,7 +65,8 @@ export function BackgroundMusic() {
   };
 
   return (
-    <>
+    <MusicControls.Provider value={{ playing, toggle }}>
+      {children}
       <audio
         ref={audio}
         src="/audio/intro.mp3"
@@ -72,16 +76,42 @@ export function BackgroundMusic() {
         onPause={() => setPlaying(false)}
         onError={() => setPlaying(false)}
       />
-      <button
-        ref={control}
-        type="button"
-        onClick={toggle}
-        aria-label={playing ? "Pause background music" : "Play background music"}
-        title={playing ? "Pause Until I Found You" : "Play Until I Found You"}
-        className="glass fixed bottom-20 right-4 z-40 grid h-11 w-11 place-items-center rounded-full text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush sm:bottom-5 sm:right-5"
-      >
-        {playing ? <Volume2 className="h-5 w-5" aria-hidden="true" /> : <VolumeX className="h-5 w-5" aria-hidden="true" />}
-      </button>
-    </>
+      {pathname !== "/universe" && <MusicButton />}
+    </MusicControls.Provider>
+  );
+}
+
+function MusicButton({ inline = false }: { inline?: boolean }) {
+  const controls = useContext(MusicControls);
+  if (!controls) return null;
+  const { playing, toggle } = controls;
+  const Icon = playing ? Pause : Play;
+
+  return (
+    <button
+      type="button"
+      data-music-control
+      onClick={toggle}
+      aria-label={playing ? "Pause background music" : "Play background music"}
+      title={playing ? "Pause Until I Found You" : "Play Until I Found You"}
+      className={inline
+        ? "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blush text-midnight hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream"
+        : "glass fixed bottom-20 right-4 z-40 grid h-11 w-11 place-items-center rounded-full text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush sm:bottom-5 sm:right-5"}
+    >
+      <Icon className="h-5 w-5" fill="currentColor" aria-hidden="true" />
+    </button>
+  );
+}
+
+export function DashboardMusicPlayer() {
+  return (
+    <section aria-label="Background music" className="glass mt-6 flex w-full max-w-sm items-center gap-3 rounded-2xl px-4 py-3">
+      <MusicButton inline />
+      <div className="min-w-0">
+        <p className="text-xs text-lilac">Background music</p>
+        <p className="font-display text-xl leading-tight text-cream">Until I Found You</p>
+        <p className="text-xs text-lilac">Stephen Sanchez · Instrumental</p>
+      </div>
+    </section>
   );
 }

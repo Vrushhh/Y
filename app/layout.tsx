@@ -23,8 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${cormorant.variable} ${playfair.variable} ${dmSans.variable} ${caveat.variable}`}>
       <body className="font-sans text-cloud antialiased">
         <AppProvider>
-          {children}
-          <BackgroundMusic />
+          <BackgroundMusic>{children}</BackgroundMusic>
         </AppProvider>
       </body>
     </html>
