@@ -1,8 +1,9 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, Trash2, Users } from "lucide-react";
+import { ArrowRight, Coins, Heart, Palette, Plus, Sparkles, Trash2, Trophy, Users } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
 import { getSupabase } from "@/lib/supabase/client";
 import { GAMES, gameName, type GameType } from "@/lib/game";
@@ -85,11 +86,60 @@ export default function DateMode() {
         action={mode === "supabase" ? <Button variant="soft" onClick={() => setQOpen(true)}><Plus className="h-4 w-4" /> Add your own question</Button> : undefined}
       />
 
+      {/* Live Virtual Space: Musée de Notre Amour */}
+      <section className="mb-8">
+        <Link
+          href="/date-mode/museum"
+          className="group relative block overflow-hidden rounded-[26px] border border-blush/35 bg-gradient-to-r from-[#2b1f45]/90 via-[#402b54]/80 to-[#271a3e]/90 p-6 sm:p-8 shadow-glow transition hover:border-blush/60 hover:brightness-105"
+        >
+          <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-blush/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-10 left-10 h-40 w-40 rounded-full bg-lilac/20 blur-3xl" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <div className="max-w-xl space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blush/20 border border-blush/40 px-3 py-1 text-xs font-medium text-blush">
+                  <Sparkles className="h-3 w-3" /> Live Virtual Space
+                </span>
+                <span className="text-xs text-lilac/80">Realtime Multiplayer Date</span>
+              </div>
+              <h2 className="font-display text-3xl sm:text-4xl text-cloud leading-tight">
+                Musée de Notre Amour
+              </h2>
+              <p className="text-sm text-lilac/90 leading-relaxed">
+                Step into a shared 2D virtual art gallery together. Walk across the marble floor, inspect your memories framed as golden masterpieces, toss coins into the wishing fountain, paint together on the easel, and solve the curator’s scavenger hunt.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-cloud/80">
+                <span className="inline-flex items-center gap-1">
+                  <Coins className="h-3.5 w-3.5 text-amber-300" /> Wishing Fountain
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Palette className="h-3.5 w-3.5 text-rose-300" /> Co-Op Canvas
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Heart className="h-3.5 w-3.5 text-blush" /> Handholding
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Trophy className="h-3.5 w-3.5 text-amber-300" /> Golden Vault
+                </span>
+              </div>
+            </div>
+
+            <div className="shrink-0">
+              <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blush to-lilac px-6 py-3 text-sm font-bold text-midnight shadow-glow transition group-hover:scale-105">
+                Enter Museum Together <ArrowRight className="h-4 w-4" />
+              </span>
+            </div>
+          </div>
+        </Link>
+      </section>
+
       {mode === "preview" ? (
         <EmptyState
           icon={<Users className="h-8 w-8" />}
-          title="Date mode needs the real backend"
-          body="Two devices can only play together through Supabase Realtime, and answers are kept private by the database. Add your Supabase keys (see SETUP_GUIDE.md) and this page comes alive."
+          title="Trivia quizzes need a database backend"
+          body="Two-device trivia requires Supabase Realtime to keep answers private until both submit. Enter the Live Virtual Museum above to explore together!"
         />
       ) : (
         <>

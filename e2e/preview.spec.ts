@@ -3,10 +3,20 @@ import { expect, test } from "@playwright/test";
 // Runs in Preview mode (no Supabase env). Supabase journeys are covered by supabase/tests/game_flow_test.sql
 // and the manual two-device checklist in PROJECT_STATUS.md.
 
-test("welcome intro opens and enters the universe", async ({ page }) => {
+test("boarding pass issues the carry-on and opens the anniversary letter on schedule", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-11-13T23:59:59+05:30"));
   await page.goto("/");
+  await expect(page.getByText("Ticket issues in")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your carry-on" })).toHaveCount(0);
+
+  await page.clock.setFixedTime(new Date("2026-11-14T00:00:00+05:30"));
+  await expect(page.getByRole("heading", { name: "Your carry-on" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Now boarding" })).toHaveCount(0);
+
+  await page.clock.setFixedTime(new Date("2026-11-16T00:00:00+05:30"));
+  await page.getByRole("button", { name: "Now boarding" }).click();
   await page.getByRole("button", { name: "Open the envelope" }).click();
-  await expect(page.getByText("you became my favourite person")).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/you became my favourite person/)).toBeVisible();
   await page.getByRole("button", { name: "Enter our universe" }).click();
   await expect(page).toHaveURL(/\/universe/);
   await expect(page.getByText("days together").first()).toBeVisible();
