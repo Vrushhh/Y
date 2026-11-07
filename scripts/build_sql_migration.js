@@ -94,3 +94,4 @@ sql += valueRows.join(",\n") + `\non conflict (sequence_number) do update set re
 const outPath = path.join(__dirname, "..", "supabase", "migrations", "20261108000000_jar_of_365_reasons.sql");
 fs.writeFileSync(outPath, sql, "utf8");
 console.log(`Generated SQL migration file at ${outPath} with ${reasons.length} reasons.`);
+
