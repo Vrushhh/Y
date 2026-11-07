@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html { background: #211A36; -webkit-tap-highlight-color: transparent; }
+body { min-height: 100dvh; }
+::selection { background: rgba(232, 185, 208, 0.35); }
+
+@layer components {
+  .glass {
+    background: linear-gradient(160deg, rgba(244, 234, 245, 0.08), rgba(141, 120, 181, 0.05));
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(201, 188, 232, 0.16);
+    box-shadow: 0 10px 40px rgba(10, 6, 24, 0.3), inset 0 1px 0 rgba(244, 234, 245, 0.06);
+  }
+  .glass-strong {
+    background: linear-gradient(160deg, rgba(64, 52, 92, 0.92), rgba(33, 26, 54, 0.95));
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(201, 188, 232, 0.18);
+    box-shadow: 0 20px 60px rgba(10, 6, 24, 0.5);
+  }
+  .paper {
+    color: #3a2f4f;
+    background-color: #F8E8D8;
+    background-image:
+      radial-gradient(rgba(141, 120, 181, 0.06) 1px, transparent 1px),
+      repeating-linear-gradient(180deg, transparent 0 31px, rgba(141, 120, 181, 0.12) 31px 32px);
+    background-size: 3px 3px, 100% 32px;
+    box-shadow: 0 30px 60px rgba(10, 6, 24, 0.45), inset 0 0 60px rgba(201, 160, 120, 0.18);
+  }
+}
+
+/* Leaflet in the celestial palette */
+.leaflet-container { background: #1a1430; font-family: var(--font-dmsans), system-ui, sans-serif; }
+.leaflet-control-attribution { background: rgba(33, 26, 54, 0.7) !important; color: #C9BCE8 !important; font-size: 10px; }
+.leaflet-control-attribution a { color: #E8B9D0 !important; }
+.leaflet-bar a { background: rgba(33, 26, 54, 0.9) !important; color: #F4EAF5 !important; border-color: rgba(201, 188, 232, 0.2) !important; }
+.memory-pin { display: grid; place-items: center; }
+.memory-pin span { width: 16px; height: 16px; border-radius: 9999px; background: radial-gradient(circle at 35% 35%, #F8E8D8, #E8B9D0 55%, #8D78B5); box-shadow: 0 0 0 4px rgba(232, 185, 208, 0.25), 0 0 18px rgba(232, 185, 208, 0.8); }
+.memory-pin.future span { background: transparent; border: 2px dashed #C9BCE8; box-shadow: 0 0 14px rgba(201, 188, 232, 0.6); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+.olu-night-tiles { filter: invert(1) grayscale(1) sepia(0.55) hue-rotate(225deg) saturate(1.3) brightness(0.72) contrast(1.05); }
+
+/* Cormorant ships old-style figures (uneven heights). Numbers use Playfair's lining, fixed-width figures instead. */
+.num { font-family: var(--font-playfair), Georgia, serif; font-variant-numeric: lining-nums tabular-nums; font-weight: 400; letter-spacing: -0.01em; }

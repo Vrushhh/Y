@@ -1,0 +1,144 @@
+"use client";
+import { forwardRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Loader2, X } from "lucide-react";
+import clsx from "clsx";
+
+type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "soft" | "ghost" | "danger"; size?: "sm" | "md" | "lg"; loading?: boolean };
+
+export const Button = forwardRef<HTMLButtonElement, BtnProps>(function Button(
+  { variant = "primary", size = "md", loading, className, children, disabled, ...rest }, ref
+) {
+  return (
+    <button
+      ref={ref}
+      disabled={disabled || loading}
+      className={clsx(
+        "inline-flex items-center justify-center gap-2 rounded-full font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush/70 focus-visible:ring-offset-2 focus-visible:ring-offset-midnight disabled:cursor-not-allowed disabled:opacity-50",
+        size === "sm" && "h-9 px-4 text-sm",
+        size === "md" && "h-11 px-5 text-sm",
+        size === "lg" && "h-13 px-7 py-3.5 text-base",
+        variant === "primary" && "bg-gradient-to-r from-blush to-lilac text-midnight shadow-glow hover:brightness-105",
+        variant === "soft" && "border border-lilac/25 bg-cloud/10 text-cloud hover:bg-cloud/15",
+        variant === "ghost" && "text-lilac hover:bg-cloud/10 hover:text-cloud",
+        variant === "danger" && "border border-blush/30 bg-[#5a2340]/40 text-blush hover:bg-[#5a2340]/70",
+        className
+      )}
+      {...rest}
+    >
+      {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+      {children}
+    </button>
+  );
+});
+
+export function Card({ className, children, as: Tag = "div", ...rest }: { className?: string; children: ReactNode; as?: "div" | "section" | "article" } & Record<string, unknown>) {
+  return <Tag className={clsx("glass rounded-card p-5", className)} {...rest}>{children}</Tag>;
+}
+
+export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [open, onClose]);
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <div className="absolute inset-0 bg-midnight/75 backdrop-blur-sm" onClick={onClose} aria-hidden />
+          <motion.div
+            role="dialog" aria-modal="true" aria-label={title}
+            className={clsx("glass-strong relative max-h-[92dvh] w-full overflow-y-auto rounded-t-[28px] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:rounded-[24px]", wide ? "sm:max-w-3xl" : "sm:max-w-lg")}
+            initial={{ y: 48, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 48, opacity: 0 }}
+            transition={{ type: "spring", damping: 30, stiffness: 320 }}
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-lilac/30 sm:hidden" aria-hidden />
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <h2 className="font-display text-2xl text-cloud">{title}</h2>
+              <button onClick={onClose} className="rounded-full p-1.5 text-lilac hover:bg-cloud/10 hover:text-cloud focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush/70" aria-label="Close">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {children}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-sm text-lilac">{label}</span>
+      {children}
+      {hint && <span className="block text-xs text-lilac/60">{hint}</span>}
+    </label>
+  );
+}
+
+const inputCls = "w-full rounded-2xl border border-lilac/20 bg-midnight/50 px-4 py-3 text-[16px] text-cloud placeholder:text-lilac/40 focus:border-blush/60 focus:outline-none focus:ring-2 focus:ring-blush/20";
+
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...p }, ref) {
+  return <input ref={ref} className={clsx(inputCls, className)} {...p} />;
+});
+export function TextArea({ className, ...p }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea className={clsx(inputCls, "min-h-[120px] resize-y", className)} {...p} />;
+}
+export function Select({ className, children, ...p }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return <select className={clsx(inputCls, "appearance-none", className)} {...p}>{children}</select>;
+}
+
+export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+  return (
+    <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 className="font-display text-4xl font-medium leading-tight text-cloud sm:text-5xl">{title}</h1>
+        {subtitle && <p className="mt-2 max-w-xl text-lilac">{subtitle}</p>}
+      </div>
+      {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}
+    </header>
+  );
+}
+
+export function EmptyState({ icon, title, body, action }: { icon?: ReactNode; title: string; body?: string; action?: ReactNode }) {
+  return (
+    <div className="glass flex flex-col items-center rounded-card px-6 py-12 text-center">
+      {icon && <div className="mb-4 text-blush">{icon}</div>}
+      <h3 className="font-display text-2xl text-cloud">{title}</h3>
+      {body && <p className="mt-2 max-w-sm text-sm text-lilac">{body}</p>}
+      {action && <div className="mt-6">{action}</div>}
+    </div>
+  );
+}
+
+export function Spinner({ label = "Loading" }: { label?: string }) {
+  return (
+    <div className="flex items-center justify-center gap-3 py-16 text-lilac" role="status">
+      <span className="relative flex h-3 w-3"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blush/60" /><span className="relative inline-flex h-3 w-3 rounded-full bg-blush" /></span>
+      <span className="text-sm">{label}…</span>
+    </div>
+  );
+}
+
+export function DemoBadge({ show }: { show?: boolean }) {
+  if (!show) return null;
+  return <span className="rounded-full border border-cream/30 bg-cream/10 px-2 py-0.5 text-[11px] text-cream">Demo</span>;
+}
+
+export function IconButton({ label, children, className, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string }) {
+  return (
+    <button aria-label={label} title={label} className={clsx("rounded-full p-2 text-lilac transition hover:bg-cloud/10 hover:text-cloud focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush/70", className)} {...rest}>
+      {children}
+    </button>
+  );
+}
+
+export function ErrorNote({ message }: { message?: string | null }) {
+  if (!message) return null;
+  return <p className="rounded-2xl border border-blush/30 bg-[#5a2340]/30 px-4 py-3 text-sm text-blush" role="alert">{message}</p>;
+}
