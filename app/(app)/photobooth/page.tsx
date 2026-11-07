@@ -9,6 +9,7 @@ import { uploadMedia } from "@/lib/media";
 import { applyFilter, FILTERS, type FilterName } from "@/lib/filters";
 import { Button, Field, Input, PageHeader } from "@/components/ui";
 import { MediaImage } from "@/components/MediaInputs";
+import { PhotoRotation } from "./PhotoRotation";
 
 const SHOTS = 4, W = 480, H = 360;
 const FRAMES = [
@@ -159,6 +160,7 @@ export default function Photobooth() {
   return (
     <div>
       <PageHeader title="Photobooth" subtitle="Four frames, a three-second countdown each. Nothing leaves this device unless you choose to save it." />
+      {mode === "supabase" && relationship && <PhotoRotation key={relationship.id} relationshipId={relationship.id} />}
       <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
         <div className="space-y-4">
           <div className="relative overflow-hidden rounded-[28px] border-[10px] border-deep bg-midnight shadow-soft">
