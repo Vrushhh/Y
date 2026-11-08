@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Copy, Crown, Heart, Link2, RotateCcw, Sparkles, WifiOff } from "lucide-react";
+import { ArrowLeft, Check, Copy, Crown, Heart, Link2, RotateCcw, Sparkles, WifiOff } from "lucide-react";
 import clsx from "clsx";
 import { useApp } from "@/components/providers/AppProvider";
 import { getSupabase } from "@/lib/supabase/client";
@@ -159,6 +159,9 @@ export default function GameRoom() {
 
   return (
     <div className="mx-auto max-w-2xl">
+      <Link href="/date-mode" className="mb-4 inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm text-lilac hover:bg-cloud/10 hover:text-cloud">
+        <ArrowLeft className="h-4 w-4" /> All games
+      </Link>
       <div className="mb-6 text-center">
         <p className="text-sm text-lilac">{gameName(room.game_type)}</p>
         {room.status === "playing" && <p className="mt-1 font-display text-lg text-cloud/80">Round {room.current_round} of {room.total_rounds}</p>}
@@ -169,7 +172,12 @@ export default function GameRoom() {
 
       {room.status === "waiting" && (
         <Card className="space-y-6 p-8 text-center">
-          <h1 className="font-display text-4xl">Waiting room</h1>
+          <div className="space-y-2">
+            <h1 className="font-display text-4xl">Waiting room</h1>
+            <p className="text-sm text-lilac">
+              {room.total_rounds} {room.total_rounds === 1 ? "round" : "rounds"} · The first question opens when you’re both ready.
+            </p>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             {[me, partner].map((p, i) => (
               <div key={i} className={clsx("rounded-2xl border p-5", p?.is_ready ? "border-blush/50 bg-blush/10" : "border-lilac/15")}>
@@ -181,23 +189,37 @@ export default function GameRoom() {
           </div>
           {!partner && (
             <div className="space-y-2">
-              <p className="text-sm text-lilac">Send this to {partnerName}. They can also join from their Date mode page.</p>
+              <p className="text-sm text-lilac">Send this invite to your partner. They can open it on their own device and sign in to join.</p>
               <div className="flex gap-2">
                 <Input readOnly value={typeof window !== "undefined" ? window.location.href : ""} className="text-sm" aria-label="Invite link" />
-                <Button variant="soft" onClick={copyLink} aria-label="Copy invite link">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</Button>
+                <Button variant="soft" className="shrink-0" onClick={copyLink} aria-label="Copy invite link">
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  <span className="hidden sm:inline">{copied ? "Copied!" : "Copy link"}</span>
+                </Button>
               </div>
+              <span className="sr-only" role="status">{copied ? "Invite link copied" : ""}</span>
             </div>
           )}
-          <Button size="lg" className="w-full" loading={busy} onClick={() => call("set_player_ready", { p_room: id, p_ready: !me?.is_ready })}>
+          <Button size="lg" className="w-full" loading={busy} disabled={!me} onClick={() => call("set_player_ready", { p_room: id, p_ready: !me?.is_ready })}>
             {me?.is_ready ? "Not ready yet" : "I’m ready"}
           </Button>
-          {me?.is_ready && partner && !partner.is_ready && <p className="text-sm text-lilac">Waiting for {partnerName} to get ready…</p>}
+          {me?.is_ready && !partner?.is_ready && (
+            <p className="text-sm text-lilac" role="status">
+              {partner ? `Waiting for ${partnerName} to get ready…` : "You’re ready. Waiting for your partner to join…"}
+            </p>
+          )}
         </Card>
       )}
 
       {room.status === "playing" && current && (
         <div className="space-y-6">
           {scoreboard}
+          <progress
+            className="block h-1.5 w-full overflow-hidden rounded-full bg-cloud/10 [&::-webkit-progress-bar]:bg-cloud/10 [&::-webkit-progress-value]:bg-blush [&::-moz-progress-bar]:bg-blush"
+            value={room.current_round}
+            max={room.total_rounds}
+            aria-label="Game progress"
+          />
           <Card className="p-7 sm:p-9">
             {current.question.image_path && <MediaImage path={current.question.image_path} alt="Memory challenge photo" className="mb-5 max-h-72 w-full rounded-2xl object-cover" />}
             <h2 className="text-center font-romance text-2xl leading-snug sm:text-3xl">{current.question.question_text}</h2>
@@ -265,7 +287,9 @@ export default function GameRoom() {
                     ))}
                   </div>
                   <p className="text-center font-romance text-lg italic text-blush">
-                    {current.matched ? "Same wavelength." : current.question.correct_answer ? `The answer was ${current.question.correct_answer}.` : "Different answers, still the same universe."}
+                    {current.question.correct_answer
+                      ? `The answer was ${current.question.correct_answer}.`
+                      : current.matched ? "Same wavelength." : "Different answers, still the same universe."}
                   </p>
                   <Button size="lg" className="w-full" loading={busy} onClick={() => call("advance_game_round", { p_room: id, p_from_round: room.current_round })}>
                     {room.current_round >= room.total_rounds ? "See results" : "Next question"}

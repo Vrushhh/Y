@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, Coins, Heart, Palette, Plus, Sparkles, Trash2, Trophy, Users } from "lucide-react";
+import { ArrowRight, Coins, ExternalLink, Globe2, Heart, Loader2, Palette, Plus, Sparkles, Trash2, Trophy, Users } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
 import { getSupabase } from "@/lib/supabase/client";
 import { GAMES, gameName, type GameType } from "@/lib/game";
@@ -17,7 +17,8 @@ export default function DateMode() {
   const { mode, relationship, userId, nameOf, toast } = useApp();
   const router = useRouter();
   const [rounds, setRounds] = useState(5);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<GameType | null>(null);
+  const [launchError, setLaunchError] = useState<{ game: GameType; message: string } | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [custom, setCustom] = useState<Question[]>([]);
   const [qOpen, setQOpen] = useState(false);
@@ -48,11 +49,22 @@ export default function DateMode() {
   }, [relationship?.id]);
 
   const create = async (type: GameType) => {
+    const sb = getSupabase();
+    if (busy || !sb) return;
     setBusy(type);
-    const { data, error } = await getSupabase()!.rpc("create_game_room", { p_game_type: type, p_rounds: rounds });
-    setBusy(null);
-    if (error) return toast(error.message, "error");
-    router.push(`/date-mode/room/${data}`);
+    setLaunchError(null);
+    try {
+      const { data, error } = await sb.rpc("create_game_room", { p_game_type: type, p_rounds: rounds });
+      if (error || !data) {
+        setLaunchError({ game: type, message: error?.message ?? "The server didn’t return a room. Try again." });
+        setBusy(null);
+        return;
+      }
+      router.push(`/date-mode/room/${data}`);
+    } catch {
+      setLaunchError({ game: type, message: "Check your connection and try again." });
+      setBusy(null);
+    }
   };
 
   const saveQuestion = async () => {
@@ -135,6 +147,30 @@ export default function DateMode() {
         </Link>
       </section>
 
+      <section className="glass mb-8 flex flex-col gap-5 rounded-[26px] p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+        <div className="flex items-start gap-4">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blush/15 text-blush">
+            <Globe2 className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-widest text-blush">Travel together</p>
+            <h2 className="mt-1 font-display text-3xl text-cloud">WorldGuessr</h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-lilac">
+              You’re dropped somewhere in the world. Read the street signs, follow the clues, and see who can pin the closest spot.
+            </p>
+            <p className="mt-2 text-xs text-lilac">To play together, open Party in WorldGuessr and share its invite link.</p>
+          </div>
+        </div>
+        <a
+          href="https://www.worldguessr.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-full bg-gradient-to-r from-blush to-lilac px-6 py-3 text-sm font-bold text-midnight shadow-glow transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blush sm:self-center"
+        >
+          Play WorldGuessr <span className="sr-only">(opens in a new tab)</span> <ExternalLink className="h-4 w-4" aria-hidden="true" />
+        </a>
+      </section>
+
       {mode === "preview" ? (
         <EmptyState
           icon={<Users className="h-8 w-8" />}
@@ -160,11 +196,14 @@ export default function DateMode() {
             </section>
           )}
 
-          <div className="mb-4 flex items-center gap-3 text-sm text-lilac">
-            <span>Rounds</span>
+          <h2 className="mb-1 font-display text-3xl">Pick a game for two</h2>
+          <p className="mb-4 text-sm text-lilac">Open a room, share the invite, and tap ready on both devices.</p>
+          <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-lilac" role="group" aria-label="Round limit">
+            <span>Up to</span>
             {[3, 5, 8, 10].map((n) => (
-              <button key={n} onClick={() => setRounds(n)} className={`h-9 w-9 rounded-full ${rounds === n ? "bg-cloud/15 text-cloud" : "hover:bg-cloud/5"}`} aria-pressed={rounds === n}>{n}</button>
+              <button key={n} onClick={() => setRounds(n)} className={`h-9 w-9 rounded-full ${rounds === n ? "bg-cloud/15 text-cloud" : "hover:bg-cloud/5"}`} aria-label={`Up to ${n} rounds`} aria-pressed={rounds === n} disabled={!!busy}>{n}</button>
             ))}
+            <span>rounds</span>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -174,12 +213,19 @@ export default function DateMode() {
                 whileHover={{ y: -4 }}
                 onClick={() => create(g.type)}
                 disabled={!!busy}
-                className="glass group flex flex-col items-start gap-3 rounded-[22px] p-5 text-left disabled:opacity-60"
+                aria-busy={busy === g.type}
+                className="glass group flex flex-col items-start gap-3 rounded-[22px] p-5 text-left transition-colors hover:border-blush/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blush disabled:cursor-wait disabled:opacity-60"
               >
                 <span className="font-display text-4xl text-blush/60">{String.fromCharCode(65 + i)}</span>
                 <span className="font-display text-xl leading-tight text-cloud">{g.name}</span>
                 <span className="text-sm text-lilac">{g.blurb}</span>
-                <span className="mt-auto pt-2 text-sm text-blush">{busy === g.type ? "Creating room…" : "Start a room"}</span>
+                <span className="mt-auto inline-flex items-center gap-2 pt-2 text-sm text-blush">
+                  {busy === g.type ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
+                  {busy === g.type ? "Opening room…" : launchError?.game === g.type ? "Try again" : "Start a room"}
+                </span>
+                {launchError?.game === g.type && (
+                  <span role="alert" className="text-xs text-cloud">Couldn’t open the room. {launchError.message}</span>
+                )}
               </motion.button>
             ))}
           </div>
