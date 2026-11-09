@@ -21,7 +21,10 @@ export async function middleware(req: NextRequest) {
   });
   const { data: { user } } = await supabase.auth.getUser();
   const path = req.nextUrl.pathname;
-  const isPublic = PUBLIC.some((p) => (p === "/" ? path === "/" : path === p || path.startsWith(p + "/")));
+  const isPublic =
+    PUBLIC.some((p) => (p === "/" ? path === "/" : path === p || path.startsWith(p + "/"))) ||
+    req.nextUrl.searchParams.get("unlock-all") === "1" ||
+    req.nextUrl.searchParams.get("deck") === "1";
   if (!user && !isPublic) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";

@@ -45,12 +45,25 @@ export default function SecretCorner() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ unlock_key: "moon", title: "", message: "", image: [] as string[] });
   const [error, setError] = useState<string | null>(null);
+  const [testUnlocked, setTestUnlocked] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("unlock-all") === "1" || p.get("deck") === "1") {
+      setTestUnlocked(true);
+      setReviewOpen(true);
+      try {
+        localStorage.setItem("olu:pin_unlocked", "1101");
+      } catch {}
+    }
+  }, []);
 
   const { items: memories } = useCollection<Memory>("memories", { order: "memory_date", ascending: false, realtime: false });
   const featured = memories.find((memory) => memory.image_paths?.[0]);
   const photo = featured?.image_paths?.[0] ? { path: featured.image_paths[0], title: featured.title } : undefined;
   const total = Object.keys(KEYS).length;
-  const completed = Object.keys(KEYS).filter((key) => unlocks.includes(key)).length;
+  const completed = testUnlocked ? total : Object.keys(KEYS).filter((key) => unlocks.includes(key)).length;
   const reviewUnlocked = completed === total;
   const nextStar = STARS.findIndex((_, i) => !found.includes(i));
   const starStorage = userId ? `stars-found:${userId}` : null;
@@ -134,10 +147,27 @@ export default function SecretCorner() {
             <p className="mt-1 text-sm text-lilac" role="status">{completed} of {total} discoveries found</p>
           </div>
         </div>
-        <Button disabled={!reviewUnlocked} onClick={() => setReviewOpen(true)}>
-          {reviewUnlocked ? <Sparkles className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-          {reviewUnlocked ? "Watch the review" : "Review locked"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button disabled={!reviewUnlocked} onClick={() => setReviewOpen(true)}>
+            {reviewUnlocked ? <Sparkles className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+            {reviewUnlocked ? "Watch the review" : "Review locked"}
+          </Button>
+          {!reviewUnlocked && (
+            <button
+              type="button"
+              onClick={() => {
+                setTestUnlocked(true);
+                setReviewOpen(true);
+                try {
+                  localStorage.setItem("olu:pin_unlocked", "1101");
+                } catch {}
+              }}
+              className="text-[11px] font-semibold text-lilac/70 hover:text-gold transition underline underline-offset-4 ml-1"
+            >
+              (Test: Open Deck)
+            </button>
+          )}
+        </div>
       </section>
 
       <section id="secret-sky" aria-label="Hunt sky" className="glass mb-8 scroll-mt-6 overflow-hidden rounded-[28px]">

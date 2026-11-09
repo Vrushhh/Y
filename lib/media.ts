@@ -65,16 +65,17 @@ export async function uploadMedia(
 
 const cache = new Map<string, { url: string; expires: number }>();
 
-export async function resolveMediaUrl(path?: string | null): Promise<string | null> {
+export async function resolveMediaUrl(path?: string | null, expiresIn = 3600): Promise<string | null> {
   if (!path) return null;
   if (/^(data:|https?:|blob:)/.test(path)) return path;
   const hit = cache.get(path);
   if (hit && hit.expires > Date.now()) return hit.url;
   const sb = getSupabase();
   if (!sb) return null;
-  const { data, error } = await sb.storage.from(MEDIA_BUCKET).createSignedUrl(path, 3600);
+  const { data, error } = await sb.storage.from(MEDIA_BUCKET).createSignedUrl(path, expiresIn);
   if (error || !data) return null;
-  cache.set(path, { url: data.signedUrl, expires: Date.now() + 55 * 60 * 1000 });
+  const ttl = Math.max(30, Math.floor(expiresIn * 0.9));
+  cache.set(path, { url: data.signedUrl, expires: Date.now() + ttl * 1000 });
   return data.signedUrl;
 }
 

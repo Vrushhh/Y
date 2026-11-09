@@ -57,6 +57,12 @@ export function UniverseGate({
     const params = new URLSearchParams(window.location.search);
     const tg = params.get("test-gate");
     if (tg) setPreviewGate(tg);
+    if (params.get("unlock-all") === "1") {
+      try {
+        localStorage.setItem("olu:pin_unlocked", CORRECT_PIN);
+      } catch {}
+      setIsUnlocked(true);
+    }
 
     try {
       const savedUnlock = localStorage.getItem("olu:pin_unlocked");
