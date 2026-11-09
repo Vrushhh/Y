@@ -6,19 +6,20 @@ import { Nav } from "@/components/Nav";
 import { Starfield } from "@/components/Starfield";
 import { StardustCursor } from "@/components/StardustCursor";
 import { Onboarding } from "@/components/Onboarding";
+import { PhotoWallToggle } from "@/components/PhotoWallToggle";
 import { Spinner } from "@/components/ui";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { ready, mode, relationship, userId, prefs } = useApp();
   const path = usePathname();
-  const main = useRef<HTMLElement>(null);
+  const page = useRef<HTMLDivElement>(null);
   const previousPath = useRef(path);
 
   useEffect(() => {
     const changed = previousPath.current !== path;
     previousPath.current = path;
     if (!changed || !prefs.animation_enabled || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const entrance = main.current?.animate([{ opacity: 0.86 }, { opacity: 1 }], {
+    const entrance = page.current?.animate([{ opacity: 0.86 }, { opacity: 1 }], {
       duration: 180,
       easing: "ease-out"
     });
@@ -42,8 +43,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <Nav />
 
-      <main ref={main} className="mx-auto w-full max-w-6xl px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 lg:pl-28 lg:pt-12">
-        {body}
+      <main className="mx-auto w-full max-w-6xl px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 lg:pl-28 lg:pt-12">
+        {ready && relationship && (
+          <PhotoWallToggle
+            key={`${userId}:${relationship.id}`}
+            storageKey={`photo-wall:${userId}:${relationship.id}`}
+            relationshipId={relationship.id}
+          />
+        )}
+        <div ref={page}>{body}</div>
       </main>
     </div>
   );
