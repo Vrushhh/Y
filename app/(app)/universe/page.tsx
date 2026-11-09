@@ -51,8 +51,8 @@ export default function Universe() {
   const anniversary = now ? nextAnniversary(startDate, now) : null;
   const left = anniversary && now ? countdown(anniversary.date, now) : null;
   const featured = useMemo(() => memories.items.find((m) => m.image_paths?.length), [memories.items]);
-  const memoryPhotos = useMemo(() => memories.items.flatMap(({ title, image_paths }) =>
-    (image_paths ?? []).filter(Boolean).map((path) => ({ path, alt: title }))
+  const memoryPhotos = useMemo(() => memories.items.flatMap(({ image_paths }) =>
+    (image_paths ?? []).filter(Boolean)
   ), [memories.items]);
   const upcoming = goals.items.filter((g) => !g.completed).slice(0, 3);
   const song = songs.items.find((s) => s.is_favourite) ?? songs.items[0];
@@ -60,7 +60,7 @@ export default function Universe() {
   const greeting = hour < 5 ? "Still up" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const displaySwitch = (
-    <div className="relative z-[41] mb-5 flex justify-end">
+    <div className="relative z-[41] flex justify-end">
       <div role="group" aria-label="Display mode" className="inline-flex rounded-full border border-lilac/25 bg-midnight/90 p-1 text-sm shadow-soft">
         <button type="button" onClick={() => setDisplay("dashboard")} aria-pressed={display === "dashboard"}
           className="inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-lilac transition-colors hover:text-cream focus-visible:ring-2 focus-visible:ring-blush aria-pressed:bg-blush aria-pressed:text-midnight">
@@ -75,7 +75,7 @@ export default function Universe() {
   );
 
   const dashboard = (
-    <div className="space-y-10">
+    <div className="relative z-10 space-y-10">
       {/* Hero Welcome Section */}
       <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="flex flex-col justify-between gap-8 py-2">
@@ -313,10 +313,13 @@ export default function Universe() {
 
   return (
     <>
-      {displaySwitch}
-      {display === "photos"
-        ? <PhotoWall relationshipId={relationship?.id} memories={memoryPhotos} loading={memories.loading} />
-        : dashboard}
+      <div className="mb-5 flex flex-wrap items-center justify-end gap-3">
+        {displaySwitch}
+        {display === "photos" && (
+          <PhotoWall relationshipId={relationship?.id} memories={memoryPhotos} loading={memories.loading} />
+        )}
+      </div>
+      {dashboard}
     </>
   );
 }
