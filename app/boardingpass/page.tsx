@@ -173,7 +173,7 @@ export default function Welcome() {
   const flightDetails = [
     ["Passenger", "Yukku"],
     ["Seat", seatLabel],
-    ["From", "The day we met in FAM"],
+    ["From", "Our FAM Beginning"],
     ["To", "A Lifetime of Love"],
     ["Issued", "14 November"],
     ["Departure", "16 November"]
