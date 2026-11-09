@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-const PUBLIC = ["/boardingpass", "/boarding-pass", "/login", "/auth"];
+const PUBLIC = ["/", "/boardingpass", "/boarding-pass", "/login", "/auth"];
 
 /** Refreshes the Supabase session and redirects signed-out visitors to /login. Inactive in Preview mode. */
 export async function middleware(req: NextRequest) {
