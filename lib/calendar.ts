@@ -66,3 +66,4 @@ export function buildGoogleCalendarUrl({
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
+

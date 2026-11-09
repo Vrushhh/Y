@@ -319,13 +319,55 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.25 }}
-                className="space-y-4"
+                className="space-y-5"
               >
+                {/* 1. Anniversary Date Time • 16 November (Placed at the top) */}
                 <div>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-blush/15 px-3 py-0.5 text-xs font-semibold text-blush">
-                    <MapPin className="h-3.5 w-3.5" /> Ritual 3 of 3
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3 py-0.5 text-xs font-semibold text-gold">
+                    <Clock className="h-3.5 w-3.5" /> Ritual 3 of 3
                   </span>
                   <h3 className="mt-2 font-display text-2xl sm:text-3xl text-cloud">
+                    Anniversary date time • 16 November
+                  </h3>
+                  <p className="mt-1 text-sm text-lilac">
+                    Choose when we celebrate together. Syncs to Google Calendar for both of us.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  {TIME_SLOT_OPTIONS.map((slot) => {
+                    const isSelected = timeSlot === slot.label;
+                    return (
+                      <button
+                        key={slot.label}
+                        type="button"
+                        onClick={() => setTimeSlot(slot.label)}
+                        className={`group flex flex-col items-start gap-1 rounded-2xl p-2.5 text-left transition-all ${
+                          isSelected
+                            ? "bg-gradient-to-br from-gold/25 via-blush/25 to-lilac/25 border-2 border-gold shadow-glow"
+                            : "bg-midnight/50 border border-lilac/15 hover:border-lilac/40 hover:bg-midnight/70"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-lg" aria-hidden="true">{slot.icon}</span>
+                          {isSelected && (
+                            <span className="rounded-full bg-gold/20 p-0.5 text-gold">
+                              <Check className="h-3 w-3" />
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-semibold text-xs text-cloud group-hover:text-gold transition-colors">
+                          {slot.label}
+                        </p>
+                        <p className="text-[10px] text-lilac leading-tight">{slot.sub}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 2. What should we do first in year two? (Placed below anniversary date time) */}
+                <div className="pt-3 border-t border-lilac/15">
+                  <h3 className="font-display text-2xl sm:text-3xl text-cloud">
                     What should we do first in year two?
                   </h3>
                   <p className="mt-1 text-sm text-lilac">
@@ -333,7 +375,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                   {STOP_OPTIONS.map((opt) => {
                     const isSelected = firstStop === opt.label;
                     return (
@@ -357,47 +399,6 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                       </button>
                     );
                   })}
-                </div>
-
-                {/* Anniversary Date Time Slot (16 November) */}
-                <div className="pt-3 border-t border-lilac/15 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5" /> Anniversary Date Time • 16 November
-                    </span>
-                    <span className="text-[10px] font-mono text-lilac/70">Syncs to Google Calendar</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {TIME_SLOT_OPTIONS.map((slot) => {
-                      const isSelected = timeSlot === slot.label;
-                      return (
-                        <button
-                          key={slot.label}
-                          type="button"
-                          onClick={() => setTimeSlot(slot.label)}
-                          className={`group flex flex-col items-start gap-1 rounded-2xl p-2.5 text-left transition-all ${
-                            isSelected
-                              ? "bg-gradient-to-br from-gold/25 via-blush/25 to-lilac/25 border-2 border-gold shadow-glow"
-                              : "bg-midnight/50 border border-lilac/15 hover:border-lilac/40 hover:bg-midnight/70"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="text-lg" aria-hidden="true">{slot.icon}</span>
-                            {isSelected && (
-                              <span className="rounded-full bg-gold/20 p-0.5 text-gold">
-                                <Check className="h-3 w-3" />
-                              </span>
-                            )}
-                          </div>
-                          <p className="font-semibold text-xs text-cloud group-hover:text-gold transition-colors">
-                            {slot.label}
-                          </p>
-                          <p className="text-[10px] text-lilac leading-tight">{slot.sub}</p>
-                        </button>
-                      );
-                    })}
-                  </div>
                 </div>
 
                 <div className="pt-4 flex items-center justify-between">
