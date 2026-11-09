@@ -74,7 +74,7 @@ export default function Letters() {
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3">
         {TYPES.map((t) => {
-          const letters = items.filter((l) => l.letter_type === t.key);
+          const letters = items.filter((l) => l.letter_type === t.key && l.title !== "Yukku's Carry-on Memory");
           const locked = t.key === "secret" && !secretOpen && !letters.some((l) => authorOf(l) === userId);
           return (
             <div key={t.key} className="flex flex-col items-center gap-3">

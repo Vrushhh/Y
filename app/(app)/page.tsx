@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Clock3, Gamepad2, Mail, Music2, Shuffle, Sparkles, Star, Stars, Target } from "lucide-react";
+import { Camera, Clock3, Gamepad2, Luggage, Mail, Music2, Shuffle, Sparkles, Star, Stars, Target } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
+import { getSupabase } from "@/lib/supabase/client";
 import { useCollection, type Row } from "@/lib/useCollection";
 import { DashboardMusicPlayer } from "@/components/BackgroundMusic";
 import { Counter } from "@/components/Counter";
@@ -28,6 +29,7 @@ type Memory = Row & { title: string; location_name?: string; memory_date?: strin
 type Reason = Row & { content: string };
 type Goal = Row & { title: string; completed: boolean; target_date?: string };
 type Song = Row & { title: string; artist?: string; is_favourite?: boolean };
+type CarryOnData = { seat?: string; memory: string; firstStop?: string; checkedInAt?: string };
 
 export default function Universe() {
   const { me, partner, startDate, relationship, unlocks } = useApp();
@@ -36,6 +38,7 @@ export default function Universe() {
   const songs = useCollection<Song>("songs", { realtime: false });
   const [now, setNow] = useState<Date | null>(null);
   const [todayReason, setTodayReason] = useState<{ reason: JarReason; sequence: number } | null>(null);
+  const [yukkuCheckIn, setYukkuCheckIn] = useState<CarryOnData | null>(null);
 
   useEffect(() => {
     setNow(new Date());
@@ -43,6 +46,40 @@ export default function Universe() {
       setTodayReason({ reason: res.reason, sequence: res.sequence });
     });
     const t = setInterval(() => setNow(new Date()), 60_000);
+
+    // Fetch Yukku's Carry-on funniest memory from shared letters
+    const sb = getSupabase();
+    if (sb) {
+      sb.from("letters")
+        .select("content, created_at")
+        .eq("title", "Yukku's Carry-on Memory")
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.content) {
+            try {
+              setYukkuCheckIn(JSON.parse(data.content));
+            } catch {
+              setYukkuCheckIn({
+                memory: data.content,
+                seat: "Beside me",
+                firstStop: "A Lifetime of Love",
+                checkedInAt: data.created_at
+              });
+            }
+          }
+        });
+    }
+
+    try {
+      const local = localStorage.getItem("olu:checkin");
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (parsed?.memory) {
+          setYukkuCheckIn((prev) => prev ?? parsed);
+        }
+      }
+    } catch {}
+
     return () => clearInterval(t);
   }, []);
 
@@ -197,26 +234,77 @@ export default function Universe() {
           )}
         </div>
 
-        {/* Reasons Jar */}
-        <div className="paper relative flex flex-col justify-between rounded-[24px] p-6 shadow-2xl">
-          <div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs uppercase tracking-widest text-[#6b5a86] font-bold">From the jar</p>
-              {todayReason && (
-                <span className="text-xs font-semibold text-[#8D78B5]">
-                  Reason {todayReason.sequence.toString().padStart(3, "0")} of 365
+        {/* Column 2: Compact Jar Note + Yukku's Carry-on Funniest Memory */}
+        <div className="flex flex-col gap-4">
+          {/* Reasons Jar (reduced in size) */}
+          <div className="paper relative flex flex-col justify-between rounded-[24px] p-4 sm:p-5 shadow-2xl">
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] uppercase tracking-widest text-[#6b5a86] font-bold">From the jar</p>
+                {todayReason && (
+                  <span className="text-[11px] font-semibold text-[#8D78B5]">
+                    Reason {todayReason.sequence.toString().padStart(3, "0")} of 365
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 font-hand text-xl sm:text-[1.35rem] leading-snug">
+                {todayReason ? `“${todayReason.reason.reason_text}”` : "One little reminder, every single day."}
+              </p>
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs">
+              <Link href="/reasons" className="text-[#6b5a86] underline-offset-4 hover:underline font-medium flex items-center gap-1">
+                <Sparkles className="h-3.5 w-3.5 text-[#D4AF37]" /> Open the jar
+              </Link>
+              <span className="text-[11px] text-[#8D78B5]">Today in IST</span>
+            </div>
+          </div>
+
+          {/* Yukku's Carry-on Funniest Memory (Displayed below Jar Note) */}
+          <div className="glass glass-hover relative flex flex-col justify-between rounded-[24px] p-4 sm:p-5 border border-lilac/20 shadow-xl overflow-hidden bg-gradient-to-br from-[#2D1F3D]/80 via-midnight to-[#241A38]/90">
+            <div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blush">
+                  <Luggage className="h-3.5 w-3.5" />
+                  <span>Yukku’s Carry-on</span>
+                </div>
+                <span className="rounded-full bg-blush/10 px-2 py-0.5 text-[10px] font-mono font-bold text-blush uppercase tracking-wider">
+                  Flight ILU-16
                 </span>
+              </div>
+
+              {yukkuCheckIn?.memory ? (
+                <div className="mt-2.5 space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gold flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 text-gold" /> Funniest Memory of Year One:
+                  </p>
+                  <p className="font-hand text-xl text-cream leading-snug">
+                    &ldquo;{yukkuCheckIn.memory}&rdquo;
+                  </p>
+                  <div className="pt-2 border-t border-lilac/10 text-[11px] text-lilac/80 flex flex-wrap items-center justify-between gap-1">
+                    <span>Seat: <strong className="text-cloud">{yukkuCheckIn.seat || "Beside me"}</strong></span>
+                    {yukkuCheckIn.firstStop && (
+                      <span>First stop: <strong className="text-cloud">{yukkuCheckIn.firstStop}</strong></span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-2.5 py-1 space-y-1">
+                  <p className="font-display text-base text-cloud">
+                    Waiting for Yukku’s Check-in
+                  </p>
+                  <p className="text-xs text-lilac/80 leading-relaxed">
+                    Yukku hasn’t checked in yet. When she checks in on 14th November, her funniest memory will appear right here 💕
+                  </p>
+                </div>
               )}
             </div>
-            <p className="mt-3 font-hand text-2xl leading-snug">
-              {todayReason ? `“${todayReason.reason.reason_text}”` : "One little reminder, every single day."}
-            </p>
-          </div>
-          <div className="mt-6 flex items-center justify-between text-sm">
-            <Link href="/reasons" className="text-[#6b5a86] underline-offset-4 hover:underline font-medium flex items-center gap-1">
-              <Sparkles className="h-4 w-4 text-[#D4AF37]" /> Open the jar
-            </Link>
-            <span className="text-xs text-[#8D78B5]">Today in IST</span>
+
+            <div className="mt-3 pt-2 border-t border-lilac/10 flex items-center justify-between text-xs">
+              <Link href="/boardingpass" className="text-blush hover:underline flex items-center gap-1 font-medium">
+                View boarding pass →
+              </Link>
+              <span className="text-[10px] font-mono text-lilac/60">Gate 16</span>
+            </div>
           </div>
         </div>
 

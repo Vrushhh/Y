@@ -132,11 +132,31 @@ export default function Welcome() {
         setLocalCheckIn(data);
       } else {
         if (!userId) throw new Error("Sign in before checking in.");
-        const { error } = await getSupabase()!.from("user_preferences")
+        const sb = getSupabase()!;
+        const { error } = await sb.from("user_preferences")
           .upsert({ user_id: userId, boarding_checkin: data }, { onConflict: "user_id" });
         if (error) throw error;
         setAccountCheckIn({ userId, data });
+
+        // Also save to shared letters table so partner dashboard can display her funniest memory!
+        try {
+          const payload = JSON.stringify(data);
+          const { data: existing } = await sb.from("letters").select("id").eq("title", "Yukku's Carry-on Memory").maybeSingle();
+          if (existing?.id) {
+            await sb.from("letters").update({ content: payload }).eq("id", existing.id);
+          } else {
+            await sb.from("letters").insert({
+              title: "Yukku's Carry-on Memory",
+              content: payload,
+              letter_type: "anniversary",
+              is_draft: false
+            });
+          }
+        } catch (e) {
+          console.warn("Could not sync shared carry-on memory:", e);
+        }
       }
+      localStorage.setItem("olu:checkin", JSON.stringify(data));
       setCheckInModalOpen(false);
     } catch {
       toast("Your check-in couldn’t be saved. Please try again.", "error");

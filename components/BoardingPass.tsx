@@ -76,7 +76,7 @@ export function CarryOn({ checkInData }: { checkInData?: CheckInData | null }) {
           {checkInData.memory && (
             <div className="sm:col-span-2 pt-2 border-t border-lilac/10">
               <span className="text-[11px] font-bold uppercase tracking-wider text-gold flex items-center gap-1">
-                <Sparkles className="h-3 w-3 text-gold" /> Packed Memory
+                <Sparkles className="h-3 w-3 text-gold" /> Packed Funniest Memory
               </span>
               <p className="font-hand text-xl text-cream mt-0.5 leading-snug">
                 &ldquo;{checkInData.memory}&rdquo;

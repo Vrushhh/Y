@@ -221,10 +221,10 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                     <Luggage className="h-3.5 w-3.5" /> Ritual 2 of 3
                   </span>
                   <h3 className="mt-2 font-display text-2xl sm:text-3xl text-cloud">
-                    Pack one memory in your carry-on
+                    Pack our funniest memory in your carry-on
                   </h3>
                   <p className="mt-1 text-sm text-lilac">
-                    If you could bring one moment from our first year, which one would it be?
+                    What is the funniest or most hilarious moment of our first year that always makes you laugh?
                   </p>
                 </div>
 
@@ -234,7 +234,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                       rows={4}
                       value={memory}
                       onChange={(e) => setMemory(e.target.value)}
-                      placeholder="A quiet moment, a laugh we shared, an ordinary day that turned into my favourite memory..."
+                      placeholder="That goofy inside joke, the time we couldn’t stop laughing, or something completely unhinged..."
                       className="w-full resize-none bg-transparent font-hand text-xl text-cream placeholder:font-sans placeholder:text-sm placeholder:text-lilac/40 focus:outline-none"
                     />
                   </div>
@@ -243,10 +243,10 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                   <div className="mt-3 flex items-center justify-between">
                     <button
                       type="button"
-                      onClick={() => setMemory("I’ll tell you in person ✨")}
+                      onClick={() => setMemory("The time we laughed so hard our stomachs hurt 😂")}
                       className="inline-flex items-center gap-1.5 rounded-full border border-lilac/30 bg-cloud/5 px-3 py-1 text-xs text-lilac hover:bg-cloud/10 hover:text-cloud transition"
                     >
-                      <Sparkles className="h-3 w-3 text-gold" /> Or tap: &ldquo;I’ll tell you in person&rdquo;
+                      <Sparkles className="h-3 w-3 text-gold" /> Or tap: &ldquo;The time we couldn&apos;t stop laughing 😂&rdquo;
                     </button>
                     <span className="text-[11px] text-lilac/60">Optional</span>
                   </div>
