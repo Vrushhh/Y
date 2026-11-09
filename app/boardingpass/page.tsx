@@ -427,7 +427,7 @@ export default function Welcome() {
 
             {/* Carry-on section revealed after check-in */}
             {issued && !boarding && checkInData && (
-              ready && !signedOut ? (
+              ready && (!signedOut || localCheckInMode) ? (
                 <CarryOn checkInData={checkInData} />
               ) : (
                 ready && (
