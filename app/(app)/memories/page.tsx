@@ -1,6 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -57,7 +57,7 @@ const blank = {
 };
 
 function MemoriesInner() {
-  const { nameOf, unlock, toast, relationship } = useApp();
+  const { nameOf, unlock, unlocks, toast, relationship } = useApp();
   const params = useSearchParams();
   const { items, loading, add, update, remove } = useCollection<Memory>("memories", { order: "memory_date" });
 
@@ -70,6 +70,7 @@ function MemoriesInner() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [counterTaps, setCounterTaps] = useState(0);
+  const counterTapsRef = useRef(0);
 
   // Constellation custom naming and lines configuration
   const storageKey = `olu:constellation:${relationship?.id ?? "preview"}`;
@@ -219,7 +220,9 @@ function MemoriesInner() {
   };
 
   const tapCounter = () => {
-    const n = counterTaps + 1;
+    if (unlocks.includes("hidden-memory")) return;
+    const n = Math.min(counterTapsRef.current + 1, 3);
+    counterTapsRef.current = n;
     setCounterTaps(n);
     if (n === 3) {
       unlock("hidden-memory").then(
@@ -270,10 +273,11 @@ function MemoriesInner() {
         </div>
 
         {/* Counter with secret trigger */}
-        <button onClick={tapCounter} className="text-sm text-lilac hover:text-cream transition">
+        <button id="memory-counter" onClick={tapCounter} className="scroll-mt-8 rounded-lg px-2 py-1 text-sm text-lilac transition hover:text-cream target:ring-2 target:ring-blush">
           <span className="num font-display text-xl text-cream">{pastCount}</span>{" "}
           {pastCount === 1 ? "moment" : "moments"} illuminated, {items.length - pastCount}{" "}
           {items.length - pastCount === 1 ? "wish" : "wishes"} to reach
+          {counterTaps > 0 && !unlocks.includes("hidden-memory") && <span className="ml-2 text-blush" role="status">{counterTaps}/3 taps</span>}
         </button>
       </div>
 

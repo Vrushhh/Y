@@ -129,13 +129,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [prefs, mode, userId, toast]);
 
   const unlock = useCallback(async (key: string) => {
-    if (unlocks.includes(key)) return false;
-    setUnlocks((u) => [...u, key]);
-    if (mode === "preview") { writeLocal("unlocks", [...unlocks, key]); return true; }
-    const { error } = await getSupabase()!.from("surprise_unlocks")
-      .upsert({ unlock_key: key, user_id: userId }, { onConflict: "user_id,unlock_key", ignoreDuplicates: true });
-    if (error) toast(error.message, "error");
-    return true;
+    if (!userId || unlocks.includes(key)) return false;
+    try {
+      let fresh: boolean;
+      if (mode === "preview") {
+        const saved = readLocal<string[]>("unlocks", []);
+        fresh = !saved.includes(key);
+        if (fresh) writeLocal("unlocks", [...saved, key]);
+      } else {
+        const { data, error } = await getSupabase()!.from("surprise_unlocks")
+          .upsert({ unlock_key: key, user_id: userId }, { onConflict: "user_id,unlock_key", ignoreDuplicates: true })
+          .select("unlock_key");
+        if (error) throw error;
+        fresh = !!data?.length;
+      }
+      setUnlocks((saved) => saved.includes(key) ? saved : [...saved, key]);
+      return fresh;
+    } catch {
+      toast("Couldn’t save your discovery. Try again.", "error");
+      return false;
+    }
   }, [unlocks, mode, userId, toast]);
 
   const me = members.find((m) => m.user_id === userId) ?? null;

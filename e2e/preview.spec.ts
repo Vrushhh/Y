@@ -64,3 +64,50 @@ test("moon secret unlocks", async ({ page }) => {
   for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "The moon", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "The moon" })).toBeVisible();
 });
+
+test("secret hunt preserves partial progress and unlocks the review after all five clues", async ({ page }) => {
+  // Preview has no multiplayer backend. Supply the persisted result of a completed quiz.
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("olu:unlocks")) localStorage.setItem("olu:unlocks", JSON.stringify(["game-champion"]));
+  });
+  await page.goto("/secret");
+  await expect(page.getByText("1 of 5 discoveries found")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Review locked" })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "Find the memory counter" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Show star hint" }).click();
+  await expect(page.getByText("Look near the upper-left edge of the sky.")).toBeVisible();
+  await page.getByRole("button", { name: "Star 1", exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Star 1", exact: true })).toHaveAttribute("aria-pressed", "true");
+  for (let i = 2; i <= 7; i++) await page.getByRole("button", { name: `Star ${i}`, exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Hidden stars" })).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Hidden stars" })).toBeHidden();
+
+  const moon = page.getByRole("button", { name: "The moon", exact: true });
+  for (let i = 0; i < 5; i++) await moon.click();
+  await expect(page.getByRole("dialog", { name: "The moon" })).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "The moon" })).toBeHidden();
+  await page.getByRole("button", { name: "Unseal the letter" }).click();
+  await expect(page.getByRole("dialog", { name: "Secret letter" })).toBeVisible();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Secret letter" })).toBeHidden();
+  await expect(page.getByText("4 of 5 discoveries found")).toBeVisible();
+
+  await page.getByRole("link", { name: "Find the memory counter" }).click();
+  const counter = page.getByRole("button", { name: /moments? illuminated/ });
+  for (let i = 0; i < 3; i++) await counter.click();
+  await expect(page.getByText("You found a hidden photograph.", { exact: false })).toBeVisible();
+  await page.goto("/secret");
+  await expect(page.getByText("5 of 5 discoveries found")).toBeVisible();
+  await page.getByRole("button", { name: "Watch the review" }).click();
+  await expect(page.getByRole("dialog", { name: "Year One Relationship Review" })).toBeVisible();
+  for (const title of ["One trip around the sun", "Somewhere in the good part", "And the award goes to…", "Five stars. Would fall again.", "See you in Year Two"]) {
+    await page.getByRole("button", { name: "Next slide" }).click();
+    await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Watch again" }).click();
+  await expect(page.getByRole("heading", { name: "Our Little Universe" })).toBeVisible();
+});
