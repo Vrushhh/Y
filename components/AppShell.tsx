@@ -1,6 +1,8 @@
 "use client";
+
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, type ReactNode } from "react";
+import { type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useApp } from "@/components/providers/AppProvider";
 import { Nav } from "@/components/Nav";
 import { Starfield } from "@/components/Starfield";
@@ -12,19 +14,8 @@ import { Spinner } from "@/components/ui";
 export function AppShell({ children }: { children: ReactNode }) {
   const { ready, mode, relationship, userId, prefs } = useApp();
   const path = usePathname();
-  const page = useRef<HTMLDivElement>(null);
-  const previousPath = useRef(path);
-
-  useEffect(() => {
-    const changed = previousPath.current !== path;
-    previousPath.current = path;
-    if (!changed || !prefs.animation_enabled || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const entrance = page.current?.animate([{ opacity: 0.86 }, { opacity: 1 }], {
-      duration: 180,
-      easing: "ease-out"
-    });
-    return () => entrance?.cancel();
-  }, [path, prefs.animation_enabled]);
+  const reduceMotion = useReducedMotion();
+  const shouldAnimate = prefs.animation_enabled && !reduceMotion;
 
   let body: ReactNode = children;
   if (!ready) body = <Spinner label="Opening our universe" />;
@@ -51,7 +42,17 @@ export function AppShell({ children }: { children: ReactNode }) {
             relationshipId={relationship.id}
           />
         )}
-        <div ref={page}>{body}</div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={path}
+            initial={shouldAnimate ? { opacity: 0, y: 8 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            exit={shouldAnimate ? { opacity: 0, y: -6 } : undefined}
+            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {body}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
