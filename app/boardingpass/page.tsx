@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, CheckCircle2, Heart, Luggage, Plane, QrCode, Sparkles, UserCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, Heart, Lock, Luggage, Plane, QrCode, Sparkles, UserCheck } from "lucide-react";
 import QRCode from "qrcode";
 import { AnniversaryLetter, CarryOn } from "@/components/BoardingPass";
 import { CheckInData, CheckInModal } from "@/components/CheckInModal";
@@ -173,8 +173,8 @@ export default function Welcome() {
   const flightDetails = [
     ["Passenger", "Yukku"],
     ["Seat", seatLabel],
-    ["From", "The day we met"],
-    ["To", "Our next orbit"],
+    ["From", "The day we met in FAM"],
+    ["To", "A Lifetime of Love"],
     ["Issued", "14 November"],
     ["Departure", "16 November"]
   ] as const;
@@ -200,7 +200,7 @@ export default function Welcome() {
                     <Plane className="h-4 w-4" aria-hidden="true" /> Our Little Universe
                   </div>
                   <span className="rounded-full bg-[#654367]/10 px-2.5 py-0.5 font-mono text-[11px] font-bold tracking-wider text-[#654367]">
-                    FLIGHT OLU-16
+                    FLIGHT ILU-16
                   </span>
                 </div>
 
@@ -254,35 +254,49 @@ export default function Welcome() {
                   )}
                 </div>
 
-                {/* Scannable Website QR Code & Barcode */}
-                <div className="flex flex-col items-center gap-1.5 sm:mt-2">
-                  {qrDataUrl ? (
-                    <div className="relative rounded-lg bg-cream/90 p-1.5 shadow-sm">
-                      <Image
-                        src={qrDataUrl}
-                        alt="Scan barcode to open Our Little Universe website"
-                        width={76}
-                        height={76}
-                        className="h-16 w-16 sm:h-20 sm:w-20"
-                      />
-                    </div>
-                  ) : (
-                    <QrCode className="h-16 w-16 text-midnight opacity-40" />
-                  )}
+                {/* Scannable Website QR Code & Barcode (revealed upon check-in completion) */}
+                {checkInData ? (
+                  <motion.div
+                    initial={reducedMotion ? false : { opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: reducedMotion ? 0 : 0.3 }}
+                    className="flex flex-col items-center gap-1.5 sm:mt-2"
+                  >
+                    {qrDataUrl ? (
+                      <div className="relative rounded-lg bg-cream/90 p-1.5 shadow-sm">
+                        <Image
+                          src={qrDataUrl}
+                          alt="Scan barcode to open Our Little Universe website"
+                          width={76}
+                          height={76}
+                          className="h-16 w-16 sm:h-20 sm:w-20"
+                        />
+                      </div>
+                    ) : (
+                      <QrCode className="h-16 w-16 text-midnight opacity-40" />
+                    )}
 
-                  {/* Flight Barcode Stripes */}
-                  <div
-                    className="h-6 w-20 opacity-60 rounded-xs"
-                    style={{
-                      background:
-                        "repeating-linear-gradient(90deg, #211a36 0 2px, transparent 2px 4px, #211a36 4px 6px, transparent 6px 9px, #211a36 9px 12px, transparent 12px 14px)"
-                    }}
-                    aria-hidden="true"
-                  />
-                  <span className="text-[9px] font-mono tracking-widest text-[#654367] uppercase">
-                    Scan to Open
-                  </span>
-                </div>
+                    {/* Flight Barcode Stripes */}
+                    <div
+                      className="h-6 w-20 opacity-60 rounded-xs"
+                      style={{
+                        background:
+                          "repeating-linear-gradient(90deg, #211a36 0 2px, transparent 2px 4px, #211a36 4px 6px, transparent 6px 9px, #211a36 9px 12px, transparent 12px 14px)"
+                      }}
+                      aria-hidden="true"
+                    />
+                    <span className="text-[9px] font-mono tracking-widest text-[#654367] uppercase">
+                      Scan to Open
+                    </span>
+                  </motion.div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[#654367]/30 bg-[#654367]/5 px-3 py-3.5 text-center sm:mt-2 max-w-[10.5rem]">
+                    <Lock className="h-4 w-4 text-[#654367]/70" />
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#654367] leading-tight">
+                      QR unlocks after check-in
+                    </span>
+                  </div>
+                )}
               </motion.aside>
             </article>
 
@@ -293,7 +307,7 @@ export default function Welcome() {
                 <div className="space-y-4">
                   <div className="space-y-1">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-blush/20 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blush">
-                      <Sparkles className="h-3.5 w-3.5" /> Flight 16 is Now Boarding
+                      <Sparkles className="h-3.5 w-3.5" /> Flight ILU-16 is Now Boarding
                     </span>
                     <h2 className="font-display text-2xl sm:text-3xl text-cloud">
                       Ready for our next orbit, Yukku?
@@ -321,7 +335,7 @@ export default function Welcome() {
                         Passenger Yukku, your flight is ready for check-in.
                       </h2>
                       <p className="text-sm text-lilac">
-                        Gate <strong className="text-cloud">16</strong> • Seat <strong className="text-cloud">Beside me</strong> • Destination: <strong className="text-cloud">Our next orbit</strong>
+                        Gate <strong className="text-cloud">16</strong> • Seat <strong className="text-cloud">Beside me</strong> • Destination: <strong className="text-cloud">A Lifetime of Love</strong>
                       </p>
                     </div>
 

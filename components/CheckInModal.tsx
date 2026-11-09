@@ -88,7 +88,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
         <div className="flex items-center justify-between border-b border-lilac/15 bg-gradient-to-r from-midnight via-[#30214B] to-midnight px-6 py-4">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-blush">
             <Plane className="h-4 w-4" />
-            <span>Our Little Universe • Flight 16 Check-in</span>
+            <span>Our Little Universe • Flight ILU-16 Check-in</span>
           </div>
           <button
             onClick={onClose}
@@ -287,7 +287,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                     What should we do first in year two?
                   </h3>
                   <p className="mt-1 text-sm text-lilac">
-                    Pick our first stop as we begin our next orbit together.
+                    Pick our first stop on our journey to A Lifetime of Love.
                   </p>
                 </div>
 
