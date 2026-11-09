@@ -14,17 +14,19 @@ describe("Boarding Pass User Journey", () => {
     expect(departureDate >= DEPARTURE).toBe(true);
   });
 
-  it("preserves three check-in ritual answers", () => {
+  it("preserves three check-in ritual answers and time slot", () => {
     const checkin = {
       seat: "Window seat, holding your hand",
       memory: "Watching the stars and laughing until midnight.",
       firstStop: "A spontaneous day out",
+      timeSlot: "Both (can't get of you)",
       checkedInAt: "2026-11-14T10:00:00.000Z"
     };
 
     expect(checkin.seat).toContain("Window seat");
     expect(checkin.memory.length).toBeGreaterThan(10);
     expect(checkin.firstStop).toBe("A spontaneous day out");
+    expect(checkin.timeSlot).toContain("Both");
   });
 });
 

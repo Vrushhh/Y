@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Clock3, Gamepad2, Luggage, Mail, Music2, Shuffle, Sparkles, Star, Stars, Target } from "lucide-react";
+import { Calendar, Camera, Clock3, Gamepad2, Luggage, Mail, Music2, Shuffle, Sparkles, Star, Stars, Target } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
 import { getSupabase } from "@/lib/supabase/client";
 import { useCollection, type Row } from "@/lib/useCollection";
@@ -12,6 +12,7 @@ import { MediaImage } from "@/components/MediaInputs";
 import { DemoBadge } from "@/components/ui";
 import { countdown, formatDate, nextAnniversary, ordinal } from "@/lib/time";
 import { getAuthoritativeTodayReason, type JarReason } from "@/lib/jar";
+import { buildGoogleCalendarUrl } from "@/lib/calendar";
 
 const EXPERIENCES = [
   { href: "/our-days", title: "Our days", body: "One Second of Us, a weekly question, and Then & Now.", icon: Camera, hue: "from-[#E8B9D0]/40 to-[#40345C]/30" },
@@ -29,7 +30,7 @@ type Memory = Row & { title: string; location_name?: string; memory_date?: strin
 type Reason = Row & { content: string };
 type Goal = Row & { title: string; completed: boolean; target_date?: string };
 type Song = Row & { title: string; artist?: string; is_favourite?: boolean };
-type CarryOnData = { seat?: string; memory: string; firstStop?: string; checkedInAt?: string };
+type CarryOnData = { seat?: string; memory: string; firstStop?: string; timeSlot?: string; checkedInAt?: string };
 
 export default function Universe() {
   const { me, partner, startDate, relationship, unlocks } = useApp();
@@ -282,10 +283,30 @@ export default function Universe() {
                   </p>
                   <div className="pt-2 border-t border-lilac/10 text-[11px] text-lilac/80 flex flex-wrap items-center justify-between gap-1">
                     <span>Seat: <strong className="text-cloud">{yukkuCheckIn.seat || "Beside me"}</strong></span>
+                    {yukkuCheckIn.timeSlot && (
+                      <span>Time: <strong className="text-gold">{yukkuCheckIn.timeSlot}</strong></span>
+                    )}
                     {yukkuCheckIn.firstStop && (
                       <span>First stop: <strong className="text-cloud">{yukkuCheckIn.firstStop}</strong></span>
                     )}
                   </div>
+                  {yukkuCheckIn.timeSlot && (
+                    <div className="pt-2">
+                      <a
+                        href={buildGoogleCalendarUrl({
+                          slot: yukkuCheckIn.timeSlot,
+                          destination: yukkuCheckIn.firstStop,
+                          memory: yukkuCheckIn.memory,
+                          guests: ["vrushabhcr7@gmail.com", "yuktasoni05@gmail.com"]
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3 py-1 text-[11px] font-bold text-gold hover:bg-gold/25 transition"
+                      >
+                        <Calendar className="h-3 w-3" /> Add to Google Calendar ↗
+                      </a>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="mt-2.5 py-1 space-y-1">

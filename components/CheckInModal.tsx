@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Calendar,
   Check,
   ChevronRight,
+  Clock,
   Heart,
   Luggage,
   MapPin,
@@ -14,13 +16,36 @@ import {
   X
 } from "lucide-react";
 import { Button } from "@/components/ui";
+import { buildGoogleCalendarUrl } from "@/lib/calendar";
 
 export interface CheckInData {
   seat: string;
   memory: string;
   firstStop: string;
+  timeSlot?: string;
   checkedInAt: string;
 }
+
+export const TIME_SLOT_OPTIONS = [
+  {
+    label: "14:00 to 16:00",
+    name: "14:00 to 16:00",
+    sub: "Afternoon Date",
+    icon: "☀️"
+  },
+  {
+    label: "21:00 to 23:00",
+    name: "21:00 to 23:00",
+    sub: "Late Night Orbit",
+    icon: "🌙"
+  },
+  {
+    label: "Both (can't get of you)",
+    name: "Both",
+    sub: "Can't get enough of you 💕",
+    icon: "✨"
+  }
+];
 
 interface CheckInModalProps {
   open: boolean;
@@ -47,16 +72,33 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
   const [seat, setSeat] = useState<string>(initialData?.seat || SEAT_OPTIONS[0].label);
   const [memory, setMemory] = useState<string>(initialData?.memory || "");
   const [firstStop, setFirstStop] = useState<string>(initialData?.firstStop || STOP_OPTIONS[0].label);
+  const [timeSlot, setTimeSlot] = useState<string>(initialData?.timeSlot || TIME_SLOT_OPTIONS[2].label);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFinish = () => {
     setIsSubmitting(true);
+    const selectedSlot = timeSlot || TIME_SLOT_OPTIONS[2].label;
     const data: CheckInData = {
       seat: seat || "Beside me",
-      memory: memory.trim() || "I’ll tell you in person",
+      memory: memory.trim() || "The time we couldn't stop laughing 😂",
       firstStop: firstStop || "A spontaneous day out",
+      timeSlot: selectedSlot,
       checkedInAt: new Date().toISOString()
     };
+
+    // Open Google Calendar event pre-filled with both email addresses & time slot
+    try {
+      const gcalUrl = buildGoogleCalendarUrl({
+        slot: selectedSlot,
+        destination: data.firstStop,
+        memory: data.memory,
+        guests: ["vrushabhcr7@gmail.com", "yuktasoni05@gmail.com"]
+      });
+      window.open(gcalUrl, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.warn("Could not open Google Calendar window:", err);
+    }
+
     setTimeout(() => {
       setIsSubmitting(false);
       onComplete(data);
@@ -82,7 +124,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        className="relative z-10 w-full max-w-lg overflow-hidden rounded-[28px] border border-lilac/30 bg-[#251B38] text-cloud shadow-2xl"
+        className="relative z-10 w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-[28px] border border-lilac/30 bg-[#251B38] text-cloud shadow-2xl"
       >
         {/* Airline Top Banner */}
         <div className="flex items-center justify-between border-b border-lilac/15 bg-gradient-to-r from-midnight via-[#30214B] to-midnight px-6 py-4">
@@ -317,6 +359,47 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                   })}
                 </div>
 
+                {/* Anniversary Date Time Slot (16 November) */}
+                <div className="pt-3 border-t border-lilac/15 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-gold flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" /> Anniversary Date Time • 16 November
+                    </span>
+                    <span className="text-[10px] font-mono text-lilac/70">Syncs to Google Calendar</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {TIME_SLOT_OPTIONS.map((slot) => {
+                      const isSelected = timeSlot === slot.label;
+                      return (
+                        <button
+                          key={slot.label}
+                          type="button"
+                          onClick={() => setTimeSlot(slot.label)}
+                          className={`group flex flex-col items-start gap-1 rounded-2xl p-2.5 text-left transition-all ${
+                            isSelected
+                              ? "bg-gradient-to-br from-gold/25 via-blush/25 to-lilac/25 border-2 border-gold shadow-glow"
+                              : "bg-midnight/50 border border-lilac/15 hover:border-lilac/40 hover:bg-midnight/70"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-lg" aria-hidden="true">{slot.icon}</span>
+                            {isSelected && (
+                              <span className="rounded-full bg-gold/20 p-0.5 text-gold">
+                                <Check className="h-3 w-3" />
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-semibold text-xs text-cloud group-hover:text-gold transition-colors">
+                            {slot.label}
+                          </p>
+                          <p className="text-[10px] text-lilac leading-tight">{slot.sub}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="pt-4 flex items-center justify-between">
                   <Button
                     variant="ghost"
@@ -330,8 +413,8 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                     onClick={handleFinish}
                     className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110"
                   >
-                    <Heart className="h-4 w-4 mr-1 text-midnight fill-midnight" />
-                    Complete Check-in & Stamp Pass
+                    <Calendar className="h-4 w-4 mr-1 text-midnight" />
+                    Complete Check-in & Sync Calendar
                   </Button>
                 </div>
               </motion.div>

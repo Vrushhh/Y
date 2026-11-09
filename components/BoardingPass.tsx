@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
-import { Camera, ExternalLink, Heart, Luggage, MapPin, Music2, Sparkles, UserCheck } from "lucide-react";
+import { Calendar, Camera, ExternalLink, Heart, Luggage, MapPin, Music2, Sparkles, UserCheck } from "lucide-react";
 import { MediaImage } from "@/components/MediaInputs";
 import { useApp } from "@/components/providers/AppProvider";
 import { MEDIA_BUCKET } from "@/lib/config";
 import { getSupabase } from "@/lib/supabase/client";
 import { useCollection, type Row } from "@/lib/useCollection";
 import type { CheckInData } from "@/components/CheckInModal";
+import { buildGoogleCalendarUrl } from "@/lib/calendar";
 
 type Memory = Row & { title: string; image_paths: string[] };
 type Song = Row & { title: string; artist?: string | null; external_url?: string | null; is_favourite: boolean };
@@ -81,6 +82,29 @@ export function CarryOn({ checkInData }: { checkInData?: CheckInData | null }) {
               <p className="font-hand text-xl text-cream mt-0.5 leading-snug">
                 &ldquo;{checkInData.memory}&rdquo;
               </p>
+            </div>
+          )}
+          {checkInData.timeSlot && (
+            <div className="sm:col-span-2 pt-2 border-t border-lilac/10 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-gold flex items-center gap-1">
+                  <Calendar className="h-3 w-3 text-gold" /> Date Time (16 November)
+                </span>
+                <p className="font-semibold text-sm text-cream mt-0.5">{checkInData.timeSlot}</p>
+              </div>
+              <a
+                href={buildGoogleCalendarUrl({
+                  slot: checkInData.timeSlot,
+                  destination: checkInData.firstStop,
+                  memory: checkInData.memory,
+                  guests: ["vrushabhcr7@gmail.com", "yuktasoni05@gmail.com"]
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3 py-1.5 text-xs font-bold text-gold hover:bg-gold/25 transition"
+              >
+                <Calendar className="h-3.5 w-3.5" /> Add to Google Calendar ↗
+              </a>
             </div>
           )}
         </div>
