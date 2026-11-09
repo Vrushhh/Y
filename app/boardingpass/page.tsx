@@ -17,7 +17,7 @@ import { SITE_URL } from "@/lib/config";
 import { getSupabase } from "@/lib/supabase/client";
 import { countdown } from "@/lib/time";
 
-const LIVE_BOARDING_PASS_URL = `${SITE_URL}/boardingpass`;
+const LIVE_DASHBOARD_URL = `${SITE_URL}/`;
 
 const ISSUED = new Date("2026-11-14T00:00:00+05:30");
 const DEPARTURE = new Date("2026-11-16T00:00:00+05:30");
@@ -81,9 +81,9 @@ export default function Welcome() {
     return () => { active = false; };
   }, [localCheckInMode, userId]);
 
-  // Generate scannable QR Code for the live website
+  // Generate scannable QR Code redirecting to the main website dashboard
   useEffect(() => {
-    QRCode.toDataURL(LIVE_BOARDING_PASS_URL, {
+    QRCode.toDataURL(LIVE_DASHBOARD_URL, {
       margin: 1,
       width: 140,
       color: {
@@ -283,15 +283,19 @@ export default function Welcome() {
                     className="flex flex-col items-center gap-1.5 sm:mt-2"
                   >
                     {qrDataUrl ? (
-                      <div className="relative rounded-lg bg-cream/90 p-1.5 shadow-sm">
+                      <Link
+                        href="/"
+                        title="Scan or tap to open Our Little Universe website"
+                        className="relative block rounded-lg bg-cream/90 p-1.5 shadow-sm transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                      >
                         <Image
                           src={qrDataUrl}
-                          alt="Scan barcode to open Our Little Universe website"
+                          alt="Scan barcode or tap to open Our Little Universe website"
                           width={76}
                           height={76}
                           className="h-16 w-16 sm:h-20 sm:w-20"
                         />
-                      </div>
+                      </Link>
                     ) : (
                       <QrCode className="h-16 w-16 text-midnight opacity-40" />
                     )}

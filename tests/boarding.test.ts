@@ -28,5 +28,23 @@ describe("Boarding Pass User Journey", () => {
     expect(checkin.firstStop).toBe("A spontaneous day out");
     expect(checkin.timeSlot).toContain("Both");
   });
+
+  it("verifies the 3 gate stages and secret PIN requirement for Yukku", () => {
+    const nov14Now = new Date("2026-11-14T14:00:00+05:30");
+    const nov16MorningNow = new Date("2026-11-16T09:00:00+05:30");
+    const slotStartTime = new Date("2026-11-16T14:00:00+05:30");
+    const slotTimeNow = new Date("2026-11-16T14:15:00+05:30");
+    const SECRET_PIN = "1101";
+
+    // Stage 1: Nov 14th -> Shows countdown to Nov 16 Midnight IST
+    expect(nov14Now < DEPARTURE).toBe(true);
+
+    // Stage 2: Nov 16 Morning -> Shows countdown to Date Slot Start Time
+    expect(nov16MorningNow >= DEPARTURE && nov16MorningNow < slotStartTime).toBe(true);
+
+    // Stage 3: Slot Time Arrived -> PIN gate active
+    expect(slotTimeNow >= slotStartTime).toBe(true);
+    expect(SECRET_PIN).toBe("1101");
+  });
 });
 

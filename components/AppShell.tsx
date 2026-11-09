@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useApp } from "@/components/providers/AppProvider";
 import { Nav } from "@/components/Nav";
@@ -10,12 +10,14 @@ import { StardustCursor } from "@/components/StardustCursor";
 import { Onboarding } from "@/components/Onboarding";
 import { PhotoWallToggle } from "@/components/PhotoWallToggle";
 import { Spinner } from "@/components/ui";
+import { UniverseGate } from "@/components/UniverseGate";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { ready, mode, relationship, userId, prefs } = useApp();
   const path = usePathname();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = prefs.animation_enabled && !reduceMotion;
+  const [isLocked, setIsLocked] = useState(false);
 
   let body: ReactNode = children;
   if (!ready) body = <Spinner label="Opening our universe" />;
@@ -32,10 +34,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <Nav />
+      {!isLocked && <Nav />}
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 lg:pl-28 lg:pt-12">
-        {ready && relationship && (
+      <main
+        className={`mx-auto w-full max-w-6xl px-4 ${
+          isLocked
+            ? "py-8"
+            : "pb-[calc(8rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 lg:pl-28 lg:pt-12"
+        }`}
+      >
+        {ready && relationship && !isLocked && (
           <PhotoWallToggle
             key={`${userId}:${relationship.id}`}
             storageKey={`photo-wall:${userId}:${relationship.id}`}
@@ -50,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             exit={shouldAnimate ? { opacity: 0, y: -6 } : undefined}
             transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
           >
-            {body}
+            <UniverseGate onLockChange={setIsLocked}>{body}</UniverseGate>
           </motion.div>
         </AnimatePresence>
       </main>
