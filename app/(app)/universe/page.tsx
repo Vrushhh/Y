@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Clock3, Gamepad2, Mail, Music2, Shuffle, Sparkles, Star, Stars, Target } from "lucide-react";
+import { Camera, Clock3, Gamepad2, Images, LayoutGrid, Mail, Music2, Shuffle, Sparkles, Star, Stars, Target } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
 import { useCollection, type Row } from "@/lib/useCollection";
 import { DashboardMusicPlayer } from "@/components/BackgroundMusic";
@@ -11,6 +11,7 @@ import { MediaImage } from "@/components/MediaInputs";
 import { DemoBadge } from "@/components/ui";
 import { countdown, formatDate, nextAnniversary, ordinal } from "@/lib/time";
 import { getAuthoritativeTodayReason, type JarReason } from "@/lib/jar";
+import { PhotoWall } from "./PhotoWall";
 
 const EXPERIENCES = [
   { href: "/our-days", title: "Our days", body: "One Second of Us, a weekly question, and Then & Now.", icon: Camera, hue: "from-[#E8B9D0]/40 to-[#40345C]/30" },
@@ -35,6 +36,7 @@ export default function Universe() {
   const goals = useCollection<Goal>("bucket_list", { order: "created_at" });
   const songs = useCollection<Song>("songs", { realtime: false });
   const [now, setNow] = useState<Date | null>(null);
+  const [display, setDisplay] = useState<"dashboard" | "photos">("dashboard");
   const [todayReason, setTodayReason] = useState<{ reason: JarReason; sequence: number } | null>(null);
 
   useEffect(() => {
@@ -49,12 +51,30 @@ export default function Universe() {
   const anniversary = now ? nextAnniversary(startDate, now) : null;
   const left = anniversary && now ? countdown(anniversary.date, now) : null;
   const featured = useMemo(() => memories.items.find((m) => m.image_paths?.length), [memories.items]);
+  const memoryPhotos = useMemo(() => memories.items.flatMap(({ title, image_paths }) =>
+    (image_paths ?? []).filter(Boolean).map((path) => ({ path, alt: title }))
+  ), [memories.items]);
   const upcoming = goals.items.filter((g) => !g.completed).slice(0, 3);
   const song = songs.items.find((s) => s.is_favourite) ?? songs.items[0];
   const hour = now?.getHours() ?? 12;
   const greeting = hour < 5 ? "Still up" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  return (
+  const displaySwitch = (
+    <div className="relative z-[41] mb-5 flex justify-end">
+      <div role="group" aria-label="Display mode" className="inline-flex rounded-full border border-lilac/25 bg-midnight/90 p-1 text-sm shadow-soft">
+        <button type="button" onClick={() => setDisplay("dashboard")} aria-pressed={display === "dashboard"}
+          className="inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-lilac transition-colors hover:text-cream focus-visible:ring-2 focus-visible:ring-blush aria-pressed:bg-blush aria-pressed:text-midnight">
+          <LayoutGrid className="h-4 w-4" aria-hidden="true" /> Dashboard
+        </button>
+        <button type="button" onClick={() => setDisplay("photos")} aria-pressed={display === "photos"}
+          className="inline-flex min-h-10 items-center gap-2 rounded-full px-3 text-lilac transition-colors hover:text-cream focus-visible:ring-2 focus-visible:ring-blush aria-pressed:bg-blush aria-pressed:text-midnight">
+          <Images className="h-4 w-4" aria-hidden="true" /> Photo wall
+        </button>
+      </div>
+    </div>
+  );
+
+  const dashboard = (
     <div className="space-y-10">
       {/* Hero Welcome Section */}
       <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -289,5 +309,14 @@ export default function Universe() {
 
       {partner && <p className="pb-4 text-center text-xs text-lilac/60">Our universe is shared with {partner.display_name}</p>}
     </div>
+  );
+
+  return (
+    <>
+      {displaySwitch}
+      {display === "photos"
+        ? <PhotoWall relationshipId={relationship?.id} memories={memoryPhotos} loading={memories.loading} />
+        : dashboard}
+    </>
   );
 }

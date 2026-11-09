@@ -5,14 +5,12 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Pause, Play, Shuffle } from "lucide-react";
 import { Button, Modal } from "@/components/ui";
 import { MediaImage } from "@/components/MediaInputs";
-import { MEDIA_BUCKET } from "@/lib/config";
-import { getSupabase } from "@/lib/supabase/client";
+import { listCameraRoll } from "@/lib/camera-roll";
 
 const ROTATION_INTERVAL = 5 * 60 * 1000;
 const SLIDESHOW_INTERVAL = 6000;
 
 export function PhotoRotation({ relationshipId }: { relationshipId: string }) {
-  const folder = `${relationshipId}/photobooth-rotation`;
   const [photos, setPhotos] = useState<string[]>([]);
   const [manualIndex, setManualIndex] = useState<number | null>(null);
   const [slideshow, setSlideshow] = useState(false);
@@ -25,20 +23,13 @@ export function PhotoRotation({ relationshipId }: { relationshipId: string }) {
   const [slot, setSlot] = useState(() => Math.floor(Date.now() / ROTATION_INTERVAL));
 
   useEffect(() => {
-    const client = getSupabase();
-    if (!client) return;
-
     let active = true;
-    client.storage.from(MEDIA_BUCKET)
-      .list(folder, { limit: 1000, sortBy: { column: "name", order: "asc" } })
-      .then(({ data, error }) => {
-        if (!active || error) return;
-        setPhotos(data.filter((file) => file.id && /\.(jpe?g|png|webp|gif)$/i.test(file.name))
-          .map((file) => `${folder}/${file.name}`));
-      });
+    listCameraRoll(relationshipId)
+      .then((photos) => { if (active) setPhotos(photos); })
+      .catch(() => { if (active) setPhotos([]); });
 
     return () => { active = false; };
-  }, [folder]);
+  }, [relationshipId]);
 
   useEffect(() => {
     let timeout: number;
