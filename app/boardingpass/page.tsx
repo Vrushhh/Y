@@ -45,9 +45,8 @@ export default function Welcome() {
   const letterHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      setPreview(new URLSearchParams(window.location.search).get("boarding-preview"));
-    }
+    const p = new URLSearchParams(window.location.search).get("boarding-preview");
+    if (p) setPreview(p);
   }, []);
 
   useEffect(() => {
@@ -149,7 +148,7 @@ export default function Welcome() {
   const board = () => {
     if (!boarding || !ready) return;
     if (signedOut) {
-      router.push("/login?next=%2F");
+      router.push("/login?next=%2Fboardingpass");
       return;
     }
     setStubTorn(true);
@@ -331,7 +330,7 @@ export default function Welcome() {
                         size="lg"
                         disabled={checkInLoading || savedAccountCheckIn?.failed}
                         onClick={() => {
-                          if (signedOut && !localCheckInMode) router.push("/login?next=%2F");
+                          if (signedOut && !localCheckInMode) router.push("/login?next=%2Fboardingpass");
                           else setCheckInModalOpen(true);
                         }}
                         className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110 text-base px-8 py-3"
@@ -395,7 +394,7 @@ export default function Welcome() {
               ) : (
                 ready && (
                   <Link
-                    href="/login?next=%2F"
+                    href="/login?next=%2Fboardingpass"
                     className="block rounded-[24px] border border-lilac/30 bg-cloud/5 p-5 text-center text-blush hover:bg-cloud/10 transition"
                   >
                     Sign in to open your carry-on <ArrowRight className="ml-1 inline h-4 w-4" aria-hidden="true" />
