@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, useMotionValue, useSpring } from "framer-motion";
+import { motion, useMotionValue, useReducedMotion, useSpring } from "framer-motion";
 import { useApp } from "@/components/providers/AppProvider";
 
 type Sparkle = {
@@ -16,7 +16,7 @@ const SPARKLE_COLORS = ["#E8B9D0", "#F8E8D8", "#C9BCE8", "#FCD34D", "#70C1B3"];
 
 export function StardustCursor() {
   const { prefs } = useApp();
-  const [mounted, setMounted] = useState(false);
+  const reduceMotion = useReducedMotion();
   const [visible, setVisible] = useState(false);
   const [isPointerDevice, setIsPointerDevice] = useState(false);
   const [sparkles, setSparkles] = useState<Sparkle[]>([]);
@@ -30,23 +30,20 @@ export function StardustCursor() {
   const smoothY = useSpring(rawY, springConfig);
 
   useEffect(() => {
-    setMounted(true);
-    // Check if device has fine pointer (mouse/trackpad) and not reduced motion
-    const finePointer = window.matchMedia("(pointer: fine)").matches;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setIsPointerDevice(finePointer && !reduceMotion && prefs.animation_enabled);
+    const enabled = window.matchMedia("(pointer: fine)").matches && !reduceMotion && prefs.animation_enabled;
+    setIsPointerDevice(enabled);
+    if (!enabled) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       rawX.set(e.clientX);
       rawY.set(e.clientY);
-      if (!visible) setVisible(true);
+      setVisible(true);
     };
 
     const handleMouseLeave = () => setVisible(false);
     const handleMouseEnter = () => setVisible(true);
 
     const handleClick = (e: MouseEvent) => {
-      if (!prefs.animation_enabled) return;
       // Spawn 4-5 micro sparkles around the click point
       const count = 4;
       const newSparkles: Sparkle[] = [];
@@ -79,9 +76,9 @@ export function StardustCursor() {
       document.removeEventListener("mouseenter", handleMouseEnter);
       window.removeEventListener("click", handleClick);
     };
-  }, [rawX, rawY, visible, prefs.animation_enabled]);
+  }, [rawX, rawY, reduceMotion, prefs.animation_enabled]);
 
-  if (!mounted || !isPointerDevice) return null;
+  if (!isPointerDevice) return null;
 
   return (
     <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden" aria-hidden="true">

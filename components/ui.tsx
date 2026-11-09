@@ -1,5 +1,6 @@
 "use client";
 import { forwardRef, useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, X } from "lucide-react";
 import clsx from "clsx";
@@ -18,9 +19,8 @@ export const Button = forwardRef<HTMLButtonElement, BtnProps>(function Button(
     <motion.button
       ref={ref}
       disabled={disabled || loading}
-      whileHover={disabled || loading ? undefined : { scale: 1.025, y: -1 }}
-      whileTap={disabled || loading ? undefined : { scale: 0.96 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      whileTap={disabled || loading ? undefined : { scale: 0.98 }}
+      transition={{ duration: 0.14 }}
       className={clsx(
         "relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush/70 focus-visible:ring-offset-2 focus-visible:ring-offset-midnight disabled:cursor-not-allowed disabled:opacity-50",
         size === "sm" && "h-9 px-4 text-sm",
@@ -65,8 +65,8 @@ export function Card({
   return (
     <Tag
       className={clsx(
-        "glass rounded-card p-5 transition-all duration-300 ease-out",
-        interactive && "hover:border-blush/35 hover:shadow-glow hover:-translate-y-1",
+        "glass rounded-card p-5",
+        interactive && "hover:border-blush/35 hover:shadow-glow motion-safe:hover:-translate-y-0.5",
         className
       )}
       {...rest}
@@ -93,15 +93,19 @@ export function Modal({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  return (
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -111,19 +115,19 @@ export function Modal({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          <div className="absolute inset-0 bg-midnight/80 backdrop-blur-md" onClick={onClose} aria-hidden />
+          <div className="absolute inset-0 bg-midnight/80" onClick={onClose} aria-hidden />
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-label={title}
             className={clsx(
-              "glass-strong relative max-h-[92dvh] w-full overflow-y-auto rounded-t-[28px] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:rounded-[24px] shadow-2xl border border-lilac/25",
+              "glass-strong relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-t-[28px] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:rounded-[24px] shadow-2xl border border-lilac/25",
               wide ? "sm:max-w-3xl" : "sm:max-w-lg"
             )}
-            initial={{ y: 32, opacity: 0, scale: 0.98 }}
+            initial={{ y: 12, opacity: 0, scale: 0.99 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 32, opacity: 0, scale: 0.98 }}
-            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            exit={{ y: 8, opacity: 0, scale: 0.99 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-lilac/30 sm:hidden" aria-hidden />
             <div className="mb-5 flex items-start justify-between gap-4">
@@ -136,7 +140,8 @@ export function Modal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

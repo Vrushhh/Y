@@ -1,7 +1,6 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Nav } from "@/components/Nav";
 import { Starfield } from "@/components/Starfield";
@@ -10,8 +9,21 @@ import { Onboarding } from "@/components/Onboarding";
 import { Spinner } from "@/components/ui";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { ready, mode, relationship, userId } = useApp();
+  const { ready, mode, relationship, userId, prefs } = useApp();
   const path = usePathname();
+  const main = useRef<HTMLElement>(null);
+  const previousPath = useRef(path);
+
+  useEffect(() => {
+    const changed = previousPath.current !== path;
+    previousPath.current = path;
+    if (!changed || !prefs.animation_enabled || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const entrance = main.current?.animate([{ opacity: 0.86 }, { opacity: 1 }], {
+      duration: 180,
+      easing: "ease-out"
+    });
+    return () => entrance?.cancel();
+  }, [path, prefs.animation_enabled]);
 
   let body: ReactNode = children;
   if (!ready) body = <Spinner label="Opening our universe" />;
@@ -30,18 +42,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <Nav />
 
-      <AnimatePresence mode="wait">
-        <motion.main
-          key={path}
-          initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -10, filter: "blur(6px)" }}
-          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto w-full max-w-6xl px-4 pb-32 pt-8 sm:px-6 lg:pl-28 lg:pt-12"
-        >
-          {body}
-        </motion.main>
-      </AnimatePresence>
+      <main ref={main} className="mx-auto w-full max-w-6xl px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 lg:pl-28 lg:pt-12">
+        {body}
+      </main>
     </div>
   );
 }

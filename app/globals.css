@@ -6,7 +6,7 @@
 html {
   background: #211A36;
   -webkit-tap-highlight-color: transparent;
-  scroll-behavior: smooth;
+  scrollbar-gutter: stable;
 }
 body {
   min-height: 100dvh;
@@ -34,9 +34,7 @@ body {
 
 @layer components {
   .glass {
-    background: linear-gradient(135deg, rgba(244, 234, 245, 0.09) 0%, rgba(141, 120, 181, 0.05) 100%);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    background: linear-gradient(135deg, rgba(85, 72, 106, 0.69), rgba(42, 33, 61, 0.76));
     border: 1px solid rgba(232, 185, 208, 0.16);
     box-shadow: 0 10px 36px rgba(10, 6, 24, 0.35), inset 0 1px 0 rgba(244, 234, 245, 0.09);
     transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, border-color 0.28s ease;
@@ -48,8 +46,8 @@ body {
   }
   .glass-strong {
     background: linear-gradient(150deg, rgba(56, 45, 82, 0.94), rgba(26, 20, 44, 0.97));
-    backdrop-filter: blur(26px) saturate(160%);
-    -webkit-backdrop-filter: blur(26px) saturate(160%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(232, 185, 208, 0.2);
     box-shadow: 0 20px 60px rgba(10, 6, 24, 0.55), inset 0 1px 0 rgba(244, 234, 245, 0.12);
   }
@@ -61,6 +59,22 @@ body {
       repeating-linear-gradient(180deg, transparent 0 31px, rgba(141, 120, 181, 0.12) 31px 32px);
     background-size: 3px 3px, 100% 32px;
     box-shadow: 0 30px 60px rgba(10, 6, 24, 0.45), inset 0 0 60px rgba(201, 160, 120, 0.18);
+  }
+}
+
+@media (pointer: coarse) {
+  .glass-strong {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@layer utilities {
+  .utility-dock-bottom {
+    bottom: calc(5.75rem + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 1024px) {
+    .utility-dock-bottom { bottom: 1.25rem; }
   }
 }
 

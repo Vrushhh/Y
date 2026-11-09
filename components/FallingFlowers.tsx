@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { useReducedMotion } from "framer-motion";
+import { useApp } from "@/components/providers/AppProvider";
 
 interface Petal {
   x: number;
@@ -32,30 +34,19 @@ const PALETTES = [
 
 export function FallingFlowers() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [active, setActive] = useState(true);
+  const { prefs } = useApp();
+  const reduceMotion = useReducedMotion();
   const [dismissed, setDismissed] = useState(false);
-  const rafId = useRef<number>(0);
+  const enabled = prefs.animation_enabled && !reduceMotion;
 
   useEffect(() => {
-    try {
-      const seen = sessionStorage.getItem("olu:flowers-seen");
-      if (!seen) {
-        sessionStorage.setItem("olu:flowers-seen", "1");
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!active || dismissed) return;
-
+    if (!enabled || dismissed) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     let width = (canvas.width = window.innerWidth * dpr);
     let height = (canvas.height = window.innerHeight * dpr);
 
@@ -67,7 +58,7 @@ export function FallingFlowers() {
     window.addEventListener("resize", onResize);
 
     // Number of gently falling petals
-    const count = Math.min(36, Math.max(16, Math.round(window.innerWidth / 40)));
+    const count = Math.min(30, Math.max(9, Math.round(window.innerWidth / 45)));
     const petals: Petal[] = [];
 
     for (let i = 0; i < count; i++) {
@@ -147,15 +138,21 @@ export function FallingFlowers() {
       ctx.restore();
     };
 
-    const render = () => {
+    let frame = 0;
+    let lastPaint = 0;
+    const render = (now: number) => {
+      frame = requestAnimationFrame(render);
+      if (now - lastPaint < 32) return;
+      const step = lastPaint ? Math.min((now - lastPaint) / (1000 / 60), 3) : 1;
+      lastPaint = now;
       ctx.clearRect(0, 0, width, height);
 
       for (let i = 0; i < petals.length; i++) {
         const p = petals[i];
-        p.y += p.speedY;
-        p.swayPhase += p.swaySpeed;
-        p.rotation += p.rotationSpeed;
-        p.flipAngle += p.flipSpeed;
+        p.y += p.speedY * step;
+        p.swayPhase += p.swaySpeed * step;
+        p.rotation += p.rotationSpeed * step;
+        p.flipAngle += p.flipSpeed * step;
 
         const currentX = p.x + Math.sin(p.swayPhase) * p.swayAmplitude;
 
@@ -172,22 +169,30 @@ export function FallingFlowers() {
       }
 
       ctx.globalAlpha = 1;
-      rafId.current = requestAnimationFrame(render);
     };
 
-    rafId.current = requestAnimationFrame(render);
+    const syncVisibility = () => {
+      cancelAnimationFrame(frame);
+      lastPaint = 0;
+      if (!document.hidden) frame = requestAnimationFrame(render);
+    };
+    document.addEventListener("visibilitychange", syncVisibility);
+    syncVisibility();
 
     return () => {
       window.removeEventListener("resize", onResize);
-      cancelAnimationFrame(rafId.current);
+      document.removeEventListener("visibilitychange", syncVisibility);
+      cancelAnimationFrame(frame);
     };
-  }, [active, dismissed]);
+  }, [enabled, dismissed]);
+
+  if (!enabled) return null;
 
   if (dismissed) {
     return (
       <button
         onClick={() => setDismissed(false)}
-        className="fixed bottom-5 right-5 z-30 flex items-center gap-1.5 rounded-full border border-blush/30 bg-midnight/70 px-3.5 py-1.5 text-xs font-semibold text-blush shadow-glow backdrop-blur-md hover:bg-midnight transition"
+        className="utility-dock-bottom fixed right-[4.5rem] z-30 flex items-center gap-1.5 rounded-full border border-blush/30 bg-midnight/70 px-3.5 py-1.5 text-xs font-semibold text-blush shadow-glow backdrop-blur-md hover:bg-midnight transition"
         aria-label="Replay falling flower petals"
       >
         <span>🌸</span> Shower flowers
@@ -197,11 +202,10 @@ export function FallingFlowers() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-20 overflow-hidden">
-      {/* Silky 60fps Canvas for slow, gentle floating flower petals */}
-      <canvas ref={canvasRef} className="h-full w-full" />
+      <canvas ref={canvasRef} className="h-full w-full" aria-hidden="true" />
 
       {/* Floating Replay / Dismiss button */}
-      <div className="pointer-events-auto absolute bottom-5 right-5 z-30 flex items-center gap-2">
+      <div className="pointer-events-auto utility-dock-bottom absolute right-[4.5rem] z-30 flex items-center gap-2">
         <button
           onClick={() => setDismissed(true)}
           className="flex items-center gap-1.5 rounded-full border border-blush/30 bg-midnight/80 px-3.5 py-1.5 text-xs font-medium text-cream shadow-glow backdrop-blur-md hover:bg-midnight transition"

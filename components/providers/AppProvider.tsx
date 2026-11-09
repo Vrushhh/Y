@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { getSupabase } from "@/lib/supabase/client";
 import { DEFAULT_START_DATE, isSupabaseConfigured } from "@/lib/config";
 import { parseLocalDate } from "@/lib/time";
@@ -163,22 +163,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={value}>
-      {children}
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex flex-col items-center gap-2 px-4">
-        <AnimatePresence>
-          {toasts.map((t) => (
-            <motion.div
-              key={t.id}
-              initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
-              className={`pointer-events-auto max-w-md rounded-2xl px-5 py-3 text-sm shadow-soft backdrop-blur-xl ${
-                t.tone === "error" ? "bg-[#5a2340]/90 text-cloud" : t.tone === "success" ? "bg-deep/90 text-cloud" : "bg-midnight/90 text-cloud"
-              } border border-lilac/20`}
-            >
-              {t.message}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      <MotionConfig reducedMotion={prefs.animation_enabled ? "user" : "always"}>
+        {children}
+        <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-[calc(1rem+env(safe-area-inset-top))] z-[100] flex flex-col items-center gap-2 px-4">
+          <AnimatePresence>
+            {toasts.map((t) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
+                className={`pointer-events-auto max-w-md rounded-2xl px-5 py-3 text-sm shadow-soft backdrop-blur-xl ${
+                  t.tone === "error" ? "bg-[#5a2340]/90 text-cloud" : t.tone === "success" ? "bg-deep/90 text-cloud" : "bg-midnight/90 text-cloud"
+                } border border-lilac/20`}
+              >
+                {t.message}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </MotionConfig>
     </Ctx.Provider>
   );
 }

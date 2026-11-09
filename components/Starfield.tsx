@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
+import { useReducedMotion } from "framer-motion";
 import { useApp } from "@/components/providers/AppProvider";
 
 type Star = { x: number; y: number; r: number; base: number; speed: number; phase: number; drift: number };
@@ -9,15 +10,17 @@ type ShootingStar = { x: number; y: number; len: number; speed: number; opacity:
 export function Starfield({ density = 1 }: { density?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const { prefs } = useApp();
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     const canvas = ref.current!;
-    const ctx = canvas.getContext("2d")!;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches || !prefs.animation_enabled;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const reduce = reduceMotion || !prefs.animation_enabled;
     let stars: Star[] = [];
     let shooting: ShootingStar[] = [];
     let raf = 0;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
 
     let mouseX = 0;
     let mouseY = 0;
@@ -53,35 +56,35 @@ export function Starfield({ density = 1 }: { density?: number }) {
       });
     };
 
-    // Spawn shooting star every 12-20s
-    let shootTimer: NodeJS.Timeout;
-    if (!reduce) {
-      const scheduleShoot = () => {
-        shootTimer = setTimeout(() => {
-          spawnShootingStar();
-          scheduleShoot();
-        }, 12000 + Math.random() * 10000);
-      };
-      scheduleShoot();
-    }
+    let shootTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleShoot = () => {
+      shootTimer = setTimeout(() => {
+        spawnShootingStar();
+        scheduleShoot();
+      }, 12000 + Math.random() * 10000);
+    };
 
     const onMouseMove = (e: MouseEvent) => {
       targetMouseX = ((e.clientX - window.innerWidth / 2) / window.innerWidth) * 15 * dpr;
       targetMouseY = ((e.clientY - window.innerHeight / 2) / window.innerHeight) * 15 * dpr;
     };
 
+    let lastPaint = 0;
     const draw = (t: number) => {
+      if (!reduce && t - lastPaint < 32) { raf = requestAnimationFrame(draw); return; }
+      const step = lastPaint ? Math.min((t - lastPaint) / (1000 / 60), 3) : 1;
+      lastPaint = t;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (!reduce) {
-        mouseX += (targetMouseX - mouseX) * 0.04;
-        mouseY += (targetMouseY - mouseY) * 0.04;
+        mouseX += (targetMouseX - mouseX) * 0.04 * step;
+        mouseY += (targetMouseY - mouseY) * 0.04 * step;
       }
 
       for (const s of stars) {
         const a = reduce ? s.base : s.base + Math.sin((t / 1000) * s.speed + s.phase) * 0.3;
         if (!reduce) {
-          s.y += s.drift;
+          s.y += s.drift * step;
           if (s.y < 0) s.y = canvas.height;
           if (s.y > canvas.height) s.y = 0;
         }
@@ -121,9 +124,9 @@ export function Starfield({ density = 1 }: { density?: number }) {
           ctx.lineTo(tailX, tailY);
           ctx.stroke();
 
-          ss.x += Math.cos(ss.angle) * ss.speed;
-          ss.y += Math.sin(ss.angle) * ss.speed;
-          ss.opacity -= 0.015;
+          ss.x += Math.cos(ss.angle) * ss.speed * step;
+          ss.y += Math.sin(ss.angle) * ss.speed * step;
+          ss.opacity -= 0.015 * step;
 
           if (ss.opacity <= 0 || ss.x > canvas.width || ss.y > canvas.height) {
             shooting.splice(i, 1);
@@ -139,18 +142,33 @@ export function Starfield({ density = 1 }: { density?: number }) {
       if (reduce) draw(0);
     };
 
+    const syncVisibility = () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(shootTimer);
+      lastPaint = 0;
+      if (!reduce && !document.hidden) {
+        raf = requestAnimationFrame(draw);
+        scheduleShoot();
+      }
+    };
+
     resize();
-    draw(0);
+    if (reduce) draw(0);
+    else {
+      document.addEventListener("visibilitychange", syncVisibility);
+      syncVisibility();
+      window.addEventListener("mousemove", onMouseMove, { passive: true });
+    }
     window.addEventListener("resize", onResize);
-    window.addEventListener("mousemove", onMouseMove, { passive: true });
 
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(shootTimer);
+      document.removeEventListener("visibilitychange", syncVisibility);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("mousemove", onMouseMove);
     };
-  }, [density, prefs.animation_enabled]);
+  }, [density, prefs.animation_enabled, reduceMotion]);
 
   return (
     <div className="pointer-events-none fixed inset-0 -z-10" aria-hidden>

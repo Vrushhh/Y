@@ -128,7 +128,7 @@ export function BackgroundMusic({ children }: { children: ReactNode }) {
         onError={() => setPlaying(false)}
       />
       {embed && selected ? (
-        <aside aria-label="Soundtrack player" className="glass fixed bottom-20 right-3 z-40 w-[min(20rem,calc(100vw-1.5rem))] rounded-xl p-2 shadow-soft sm:bottom-5">
+        <aside aria-label="Soundtrack player" className="glass utility-dock-bottom fixed right-3 z-40 w-[min(20rem,calc(100vw-1.5rem))] rounded-xl p-2 shadow-soft">
           <div className="flex items-center justify-between gap-2 px-2 pb-1">
             <span className="truncate text-sm">{selected.title}</span>
             <button type="button" onClick={stopEmbed} aria-label="Close soundtrack player" className="rounded p-1 hover:bg-cloud/15"><X className="h-4 w-4" /></button>
@@ -156,7 +156,7 @@ function MusicButton({ inline = false }: { inline?: boolean }) {
       title={`${playing ? "Pause" : "Play"} ${selected?.title ?? "Until I Found You"}`}
       className={inline
         ? "grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blush text-midnight hover:bg-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream"
-        : "glass fixed bottom-20 right-4 z-40 grid h-11 w-11 place-items-center rounded-full text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush sm:bottom-5 sm:right-5"}
+        : "glass utility-dock-bottom fixed right-4 z-40 grid h-11 w-11 place-items-center rounded-full text-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blush lg:right-5"}
     >
       <Icon className="h-5 w-5" fill="currentColor" aria-hidden="true" />
     </button>
