@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { createPortal } from "react-dom";
 import { ArrowRight, Camera, Clapperboard, Lock, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
 import { getSupabase } from "@/lib/supabase/client";
@@ -207,8 +208,6 @@ export default function SecretCorner() {
         </ol>
       </section>
 
-      {reviewOpen && reviewUnlocked && <YearOneReview onClose={() => setReviewOpen(false)} photo={photo} />}
-
       <section className="mt-12">
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -229,37 +228,43 @@ export default function SecretCorner() {
         )}
       </section>
 
-      <Modal open={!!reveal} onClose={() => setReveal(null)} title={reveal ? KEYS[reveal].label : ""}>
-        {reveal && (
-          <div className="space-y-4">
-            <p className="font-romance text-xl italic text-cloud">{KEYS[reveal].reward}</p>
-            {reveal === "hidden-memory" && (
-              photo
-                ? <MediaImage path={photo.path} alt={photo.title} className="max-h-72 w-full rounded-2xl object-contain" />
-                : <div className="grid min-h-28 place-items-center rounded-2xl border border-dashed border-lilac/30 text-blush"><Camera className="h-8 w-8" aria-hidden="true" /></div>
-            )}
-            {reveal === "secret-letter" && <Link className="inline-block rounded-lg text-sm font-semibold text-blush underline underline-offset-4" href="/letters">Visit the secret envelope in Letters</Link>}
-            {shown.map((secret) => (
-              <div key={secret.id} className="paper rounded-2xl p-6">
-                <p className="font-display text-2xl">{secret.title}</p>
-                {secret.message && <p className="mt-2 whitespace-pre-line font-hand text-2xl">{secret.message}</p>}
-                {secret.image_path && <MediaImage path={secret.image_path} alt="" className="mt-4 w-full rounded-xl" />}
+      {typeof document !== "undefined" && createPortal(
+        <>
+          {reviewOpen && reviewUnlocked && <YearOneReview onClose={() => setReviewOpen(false)} photo={photo} />}
+          <Modal open={!!reveal} onClose={() => setReveal(null)} title={reveal ? KEYS[reveal].label : ""}>
+            {reveal && (
+              <div className="space-y-4">
+                <p className="font-romance text-xl italic text-cloud">{KEYS[reveal].reward}</p>
+                {reveal === "hidden-memory" && (
+                  photo
+                    ? <MediaImage path={photo.path} alt={photo.title} className="max-h-72 w-full rounded-2xl object-contain" />
+                    : <div className="grid min-h-28 place-items-center rounded-2xl border border-dashed border-lilac/30 text-blush"><Camera className="h-8 w-8" aria-hidden="true" /></div>
+                )}
+                {reveal === "secret-letter" && <Link className="inline-block rounded-lg text-sm font-semibold text-blush underline underline-offset-4" href="/letters">Visit the secret envelope in Letters</Link>}
+                {shown.map((secret) => (
+                  <div key={secret.id} className="paper rounded-2xl p-6">
+                    <p className="font-display text-2xl">{secret.title}</p>
+                    {secret.message && <p className="mt-2 whitespace-pre-line font-hand text-2xl">{secret.message}</p>}
+                    {secret.image_path && <MediaImage path={secret.image_path} alt="" className="mt-4 w-full rounded-xl" />}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </Modal>
+            )}
+          </Modal>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Hide a surprise">
-        <div className="space-y-4">
-          <Field label="Hidden behind"><Select value={form.unlock_key} onChange={(e) => setForm({ ...form, unlock_key: e.target.value })}>{Object.entries(KEYS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Select></Field>
-          <Field label="Title"><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
-          <Field label="Message"><TextArea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} /></Field>
-          <ImagePicker value={form.image} onChange={(image) => setForm({ ...form, image })} folder="secrets" label="Add a secret photo" />
-          <ErrorNote message={error} />
-          <Button className="w-full" onClick={save}>Hide it</Button>
-        </div>
-      </Modal>
+          <Modal open={open} onClose={() => setOpen(false)} title="Hide a surprise">
+            <div className="space-y-4">
+              <Field label="Hidden behind"><Select value={form.unlock_key} onChange={(e) => setForm({ ...form, unlock_key: e.target.value })}>{Object.entries(KEYS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</Select></Field>
+              <Field label="Title"><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
+              <Field label="Message"><TextArea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} /></Field>
+              <ImagePicker value={form.image} onChange={(image) => setForm({ ...form, image })} folder="secrets" label="Add a secret photo" />
+              <ErrorNote message={error} />
+              <Button className="w-full" onClick={save}>Hide it</Button>
+            </div>
+          </Modal>
+        </>,
+        document.body
+      )}
     </div>
   );
 }
