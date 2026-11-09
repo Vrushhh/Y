@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Camera, Clock3, Gamepad2, Home, Hourglass, Mail, Music2, MoreHorizontal, Settings, Sparkles, Star, Stars, Target, X
+  Camera, Clock3, Gamepad2, Home, Hourglass, Mail, Music2, MoreHorizontal, Plane, Settings, Sparkles, Star, Stars, Target, X
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -16,6 +16,7 @@ const PRIMARY = [
 ];
 
 export const MORE = [
+  { href: "/boardingpass", label: "Boarding pass", icon: Plane },
   { href: "/timeline", label: "Timeline", icon: Clock3 },
   { href: "/reasons", label: "Jars of reasons", icon: Sparkles },
   { href: "/photobooth", label: "Photobooth", icon: Camera },
@@ -26,7 +27,12 @@ export const MORE = [
   { href: "/settings", label: "Settings", icon: Settings }
 ];
 
-const isActive = (path: string, href: string) => path === href || path.startsWith(href + "/");
+const isActive = (path: string, href: string) => {
+  if (href === "/universe" || href === "/") {
+    return path === "/" || path === "/universe";
+  }
+  return path === href || path.startsWith(href + "/");
+};
 
 export function Nav() {
   const path = usePathname();

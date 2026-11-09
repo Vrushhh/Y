@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-const PUBLIC = ["/", "/login", "/auth"];
+const PUBLIC = ["/boardingpass", "/boarding-pass", "/login", "/auth"];
 
 /** Refreshes the Supabase session and redirects signed-out visitors to /login. Inactive in Preview mode. */
 export async function middleware(req: NextRequest) {
@@ -30,7 +30,7 @@ export async function middleware(req: NextRequest) {
   }
   if (user && path === "/login") {
     const url = req.nextUrl.clone();
-    url.pathname = "/universe";
+    url.pathname = "/";
     url.search = "";
     return NextResponse.redirect(url);
   }

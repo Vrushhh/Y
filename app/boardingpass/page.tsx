@@ -13,10 +13,11 @@ import { Envelope } from "@/components/Envelope";
 import { Starfield } from "@/components/Starfield";
 import { Button } from "@/components/ui";
 import { useApp } from "@/components/providers/AppProvider";
+import { SITE_URL } from "@/lib/config";
 import { getSupabase } from "@/lib/supabase/client";
 import { countdown } from "@/lib/time";
 
-const LIVE_BOARDING_PASS_URL = "https://our-little-universe-umber-phi.vercel.app/";
+const LIVE_BOARDING_PASS_URL = `${SITE_URL}/boardingpass`;
 
 const ISSUED = new Date("2026-11-14T00:00:00+05:30");
 const DEPARTURE = new Date("2026-11-16T00:00:00+05:30");

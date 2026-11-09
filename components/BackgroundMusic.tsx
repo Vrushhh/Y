@@ -135,7 +135,7 @@ export function BackgroundMusic({ children }: { children: ReactNode }) {
           </div>
           <SoundtrackEmbed key={embed} url={embed} title={selected.title} />
         </aside>
-      ) : pathname !== "/universe" && <MusicButton />}
+      ) : (pathname !== "/universe" && pathname !== "/") && <MusicButton />}
     </MusicControls.Provider>
   );
 }
