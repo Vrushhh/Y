@@ -1,49 +1,24 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
-import { Calendar, Camera, ExternalLink, Heart, Luggage, MapPin, Music2, Sparkles, UserCheck } from "lucide-react";
-import { MediaImage } from "@/components/MediaInputs";
+import type { RefObject } from "react";
+import Image from "next/image";
+import { Calendar, ExternalLink, Heart, Luggage, MapPin, Music2, Sparkles, UserCheck } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
-import { MEDIA_BUCKET } from "@/lib/config";
-import { getSupabase } from "@/lib/supabase/client";
 import { useCollection, type Row } from "@/lib/useCollection";
 import type { CheckInData } from "@/components/CheckInModal";
-import { buildGoogleCalendarUrl } from "@/lib/calendar";
+import { buildGoogleCalendarLinks } from "@/lib/calendar";
 
-type Memory = Row & { title: string; image_paths: string[] };
 type Song = Row & { title: string; artist?: string | null; external_url?: string | null; is_favourite: boolean };
 type Letter = Row & { title: string; content: string; letter_type: string; is_draft: boolean };
 
 export function CarryOn({ checkInData }: { checkInData?: CheckInData | null }) {
-  const { mode, relationship } = useApp();
-  const [cameraRollPhoto, setCameraRollPhoto] = useState<{ folder: string; path: string } | null>(null);
-  const memories = useCollection<Memory>("memories", { order: "created_at", ascending: false, realtime: false });
   const songs = useCollection<Song>("songs", { order: "created_at", ascending: false, realtime: false });
-  const memory = memories.items.find((item) => !item.is_demo && item.image_paths?.[0]);
   const tracks = songs.items.filter((item) => !item.is_demo && /^https?:\/\//i.test(item.external_url ?? ""));
   const song = tracks.find((item) => item.is_favourite) ?? tracks[0];
-  const folder = mode === "supabase" && relationship ? `${relationship.id}/photobooth-rotation` : null;
-
-  useEffect(() => {
-    if (!folder || memories.loading || memory) return;
-    let active = true;
-    getSupabase()
-      ?.storage.from(MEDIA_BUCKET)
-      .list(folder, { limit: 1000, sortBy: { column: "name", order: "asc" } })
-      .then(({ data }) => {
-        const photo = data?.find((file) => file.id && /\.(jpe?g|png|webp|gif)$/i.test(file.name));
-        if (active && photo) setCameraRollPhoto({ folder, path: `${folder}/${photo.name}` });
-      });
-    return () => {
-      active = false;
-    };
-  }, [folder, memories.loading, memory]);
-
-  const photoPath = memory?.image_paths[0] ?? (cameraRollPhoto?.folder === folder ? cameraRollPhoto?.path : undefined);
 
   return (
-    <section className="glass space-y-4 rounded-[26px] p-5 sm:p-7 border border-lilac/20 shadow-2xl" aria-labelledby="carry-on">
-      <div className="flex items-center justify-between border-b border-lilac/15 pb-3">
+    <section className="glass space-y-4 rounded-[26px] p-4 sm:p-7 border border-lilac/20 shadow-2xl" aria-labelledby="carry-on">
+      <div className="flex items-center justify-between gap-2 border-b border-lilac/15 pb-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blush flex items-center gap-1.5">
             <Luggage className="h-3.5 w-3.5" /> For the journey
@@ -66,13 +41,13 @@ export function CarryOn({ checkInData }: { checkInData?: CheckInData | null }) {
             <span className="text-[11px] font-bold uppercase tracking-wider text-lilac flex items-center gap-1">
               <Heart className="h-3 w-3 text-blush" /> Confirmed Seat
             </span>
-            <p className="font-semibold text-sm text-cream">{checkInData.seat}</p>
+            <p className="break-words font-semibold text-sm text-cream">{checkInData.seat}</p>
           </div>
           <div className="space-y-1">
             <span className="text-[11px] font-bold uppercase tracking-wider text-lilac flex items-center gap-1">
               <MapPin className="h-3 w-3 text-blush" /> First Stop (Year Two)
             </span>
-            <p className="font-semibold text-sm text-cream">{checkInData.firstStop}</p>
+            <p className="break-words font-semibold text-sm text-cream">{checkInData.firstStop}</p>
           </div>
           {checkInData.memory && (
             <div className="sm:col-span-2 pt-2 border-t border-lilac/10">
@@ -90,21 +65,23 @@ export function CarryOn({ checkInData }: { checkInData?: CheckInData | null }) {
                 <span className="text-[11px] font-bold uppercase tracking-wider text-gold flex items-center gap-1">
                   <Calendar className="h-3 w-3 text-gold" /> Date Time (16 November)
                 </span>
-                <p className="font-semibold text-sm text-cream mt-0.5">{checkInData.timeSlot}</p>
+                <p className="break-words font-semibold text-sm text-cream mt-0.5">{checkInData.timeSlot}</p>
               </div>
-              <a
-                href={buildGoogleCalendarUrl({
+              {buildGoogleCalendarLinks({
                   slot: checkInData.timeSlot,
                   destination: checkInData.firstStop,
                   memory: checkInData.memory,
+                  seat: checkInData.seat,
                   guests: ["vrushabhcr7@gmail.com", "yuktasoni05@gmail.com"]
-                })}
+                }).map(({ href, label }) => (
+                <a key={href} href={href}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3 py-1.5 text-xs font-bold text-gold hover:bg-gold/25 transition"
               >
-                <Calendar className="h-3.5 w-3.5" /> Add to Google Calendar ↗
-              </a>
+                <Calendar className="h-3.5 w-3.5" /> {label} ↗
+                </a>
+              ))}
             </div>
           )}
         </div>
@@ -112,20 +89,14 @@ export function CarryOn({ checkInData }: { checkInData?: CheckInData | null }) {
 
       {/* Photo & Soundtrack */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <figure className="overflow-hidden rounded-2xl bg-midnight/70 border border-lilac/15 shadow-soft">
-          {photoPath ? (
-            <MediaImage
-              key={photoPath}
-              path={photoPath}
-              alt={memory?.title ?? "A photo from our camera roll"}
-              className="h-48 w-full object-cover transition-transform duration-500 hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-48 flex-col items-center justify-center gap-2 text-sm text-lilac">
-              <Camera className="h-6 w-6 text-blush" aria-hidden="true" />
-              {memories.loading ? "Finding a photo…" : "A photo from our year together"}
-            </div>
-          )}
+        <figure className="relative min-h-48 overflow-hidden rounded-2xl border border-lilac/15 bg-midnight/70 shadow-soft">
+          <Image
+            src="/boarding/yukku-childhood.jpg"
+            alt="Yukku’s childhood portrait beside a pink butterfly"
+            fill
+            sizes="(min-width: 640px) 320px, 90vw"
+            style={{ objectFit: "cover", objectPosition: "center 58%", transform: "scale(1.65)", transformOrigin: "43% 48%" }}
+          />
         </figure>
 
         <div className="flex min-w-0 flex-col justify-center gap-2.5 rounded-2xl bg-midnight/70 p-5 border border-lilac/15 shadow-soft">

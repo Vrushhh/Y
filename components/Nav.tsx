@@ -51,7 +51,7 @@ export function Nav() {
   return (
     <>
       {/* Desktop: floating sidebar with fluid sliding layout pill */}
-      <nav aria-label="Main" className="glass fixed left-5 top-1/2 z-40 hidden -translate-y-1/2 flex-col gap-1.5 rounded-[26px] p-2 lg:flex shadow-2xl border border-lilac/20">
+      <nav aria-label="Main" className="glass fixed left-5 top-1/2 z-40 hidden max-h-[calc(100dvh-2rem)] -translate-y-1/2 flex-col gap-1.5 rounded-[26px] p-2 lg:flex shadow-2xl max-[850px]:overflow-y-auto border border-lilac/20">
         {[...PRIMARY, ...MORE].map(({ href, label, icon: Icon }) => {
           const active = isActive(path, href);
           return (
@@ -92,7 +92,7 @@ export function Nav() {
       </nav>
 
       {/* Mobile: bottom floating dock with fluid sliding pill */}
-      <nav aria-label="Main" className="glass-strong fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 grid grid-cols-5 rounded-[24px] px-1.5 py-1.5 lg:hidden shadow-2xl border border-lilac/25">
+      <nav aria-label="Main" className="glass-strong fixed safe-dock-x bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 grid grid-cols-5 rounded-[24px] px-1.5 py-1.5 lg:hidden shadow-2xl border border-lilac/25">
         {PRIMARY.map(({ href, label, icon: Icon }) => {
           const active = isActive(path, href);
           return (
@@ -153,7 +153,7 @@ export function Nav() {
               role="dialog"
               aria-modal="true"
               aria-label="More places"
-              className="glass-strong absolute inset-x-0 bottom-0 rounded-t-[28px] p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] border-t border-lilac/25"
+              className="glass-strong absolute inset-x-0 bottom-0 max-h-[calc(100dvh-env(safe-area-inset-top)-1rem)] overflow-y-auto overscroll-contain rounded-t-[28px] p-4 sm:p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] border-t border-lilac/25"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}

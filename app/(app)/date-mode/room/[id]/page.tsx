@@ -9,6 +9,7 @@ import { useApp } from "@/components/providers/AppProvider";
 import { getSupabase } from "@/lib/supabase/client";
 import { gameName, similarity, usesPrediction } from "@/lib/game";
 import { Button, Card, EmptyState, ErrorNote, Input, Spinner } from "@/components/ui";
+import { useCollection, type Row } from "@/lib/useCollection";
 import { MediaImage } from "@/components/MediaInputs";
 
 type Room = { id: string; game_type: string; status: string; current_round: number; total_rounds: number; expires_at: string; next_room_id: string | null; created_by: string };
@@ -102,7 +103,11 @@ export default function GameRoom() {
   const current = rounds.find((r) => r.round_number === room?.current_round);
   const myAnswer = answers.find((a) => a.round_id === current?.id && a.user_id === userId);
   const partnerAnswer = answers.find((a) => a.round_id === current?.id && a.user_id !== userId);
-  const predicts = room ? usesPrediction(room.game_type) : false;
+  const lifetime = room?.game_type === "every_lifetime";
+  const memories = useCollection<Row & { image_paths: string[] }>("memories", { realtime: false });
+  const reunionPhoto = memories.items.find((memory) => !memory.is_demo && memory.image_paths?.[0])?.image_paths[0];
+  const era = ["The past · A record shop", "The present · A crowded city", "The future · 2076", "The reunion"];
+  const predicts = lifetime ? current?.round_number === 1 || current?.round_number === 3 : !!room && usesPrediction(room.game_type);
   const expired = room && (room.status === "expired" || (room.status !== "finished" && new Date(room.expires_at) < new Date()));
   const partnerName = partner ? nameOf(partner.user_id) : "your person";
 
@@ -171,7 +176,7 @@ export default function GameRoom() {
       )}
 
       {room.status === "waiting" && (
-        <Card className="space-y-6 p-8 text-center">
+        <Card className="space-y-6 p-4 text-center sm:p-8">
           <div className="space-y-2">
             <h1 className="font-display text-4xl">Waiting room</h1>
             <p className="text-sm text-lilac">
@@ -213,7 +218,7 @@ export default function GameRoom() {
 
       {room.status === "playing" && current && (
         <div className="space-y-6">
-          {scoreboard}
+          {!lifetime && scoreboard}
           <progress
             className="block h-1.5 w-full overflow-hidden rounded-full bg-cloud/10 [&::-webkit-progress-bar]:bg-cloud/10 [&::-webkit-progress-value]:bg-blush [&::-moz-progress-bar]:bg-blush"
             value={room.current_round}
@@ -222,6 +227,7 @@ export default function GameRoom() {
           />
           <Card className="p-7 sm:p-9">
             {current.question.image_path && <MediaImage path={current.question.image_path} alt="Memory challenge photo" className="mb-5 max-h-72 w-full rounded-2xl object-cover" />}
+            {lifetime && <p className="mb-3 text-center text-sm text-blush">{era[current.round_number - 1]}</p>}
             <h2 className="text-center font-romance text-2xl leading-snug sm:text-3xl">{current.question.question_text}</h2>
 
             <AnimatePresence mode="wait">
@@ -275,24 +281,24 @@ export default function GameRoom() {
 
               {current.status === "revealed" && (
                 <motion.div key="reveal" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="mt-8 space-y-5">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {[myAnswer, partnerAnswer].map((a, i) => (
                       <motion.div key={i} initial={{ rotateY: 90 }} animate={{ rotateY: 0 }} transition={{ delay: i * 0.15, duration: 0.5 }}
                         className={clsx("rounded-2xl border p-4 text-center", a && a.points_awarded > 0 ? "border-blush/60 bg-blush/10" : "border-lilac/20")}>
                         <p className="text-xs text-lilac">{i === 0 ? "You" : partnerName}</p>
-                        <p className="mt-1 font-display text-xl text-cloud">{a?.answer ?? "…"}</p>
+                        <p className="mt-1 whitespace-pre-wrap break-words font-display text-xl text-cloud">{a?.answer ?? "…"}</p>
                         {predicts && a?.prediction && <p className="mt-2 text-xs text-lilac">guessed “{a.prediction}”</p>}
-                        <p className="mt-2 text-sm text-cream">+{a?.points_awarded ?? 0}</p>
+                        {!lifetime && <p className="mt-2 text-sm text-cream">+{a?.points_awarded ?? 0}</p>}
                       </motion.div>
                     ))}
                   </div>
                   <p className="text-center font-romance text-lg italic text-blush">
                     {current.question.correct_answer
                       ? `The answer was ${current.question.correct_answer}.`
-                      : current.matched ? "Same wavelength." : "Different answers, still the same universe."}
+                      : lifetime ? "You found another clue." : current.matched ? "Same wavelength." : "Different answers, still the same universe."}
                   </p>
                   <Button size="lg" className="w-full" loading={busy} onClick={() => call("advance_game_round", { p_room: id, p_from_round: room.current_round })}>
-                    {room.current_round >= room.total_rounds ? "See results" : "Next question"}
+                    {room.current_round >= room.total_rounds ? (lifetime ? "Reunite" : "See results") : (lifetime ? "Continue through time" : "Next question")}
                   </Button>
                 </motion.div>
               )}
@@ -302,15 +308,16 @@ export default function GameRoom() {
       )}
 
       {room.status === "finished" && (
-        <Card className="space-y-6 p-8 text-center">
+        <Card className="space-y-6 p-4 text-center sm:p-8">
           <Crown className="mx-auto h-10 w-10 text-cream" />
           <h1 className="font-display text-4xl">
-            {!me || !partner ? "Game over" : me.score === partner.score ? "A perfect tie" : me.score > partner.score ? "You win this round" : `${partnerName} wins this round`}
+            {lifetime ? "I found you" : !me || !partner ? "Game over" : me.score === partner.score ? "A perfect tie" : me.score > partner.score ? "You win this round" : `${partnerName} wins this round`}
           </h1>
-          {scoreboard}
+          {!lifetime && scoreboard}
           {["compatibility", "this_or_that", "would_you_rather"].includes(room.game_type) && (
             <p className="text-lilac">You matched on <span className="font-display text-3xl text-blush">{similarity(rounds.filter((r) => r.matched).length, rounds.length)}%</span> of questions.</p>
           )}
+          {lifetime && reunionPhoto && <MediaImage path={reunionPhoto} alt="A memory from your constellation" className="mx-auto max-h-72 w-full rounded-2xl object-contain" />}
           <ul className="space-y-2 text-left">
             {rounds.map((r) => {
               const mine = answers.find((a) => a.round_id === r.id && a.user_id === userId);
@@ -318,7 +325,12 @@ export default function GameRoom() {
               return (
                 <li key={r.id} className="rounded-2xl bg-cloud/5 px-4 py-3 text-sm">
                   <p className="text-cloud">{r.question.question_text}</p>
-                  <p className="text-lilac">You: {mine?.answer ?? "-"} · {partnerName}: {theirs?.answer ?? "-"}</p>
+                  {lifetime ? (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div><p className="text-blush">You</p><p className="whitespace-pre-wrap break-words text-cloud">{mine?.answer}</p></div>
+                      <div><p className="text-blush">{partnerName}</p><p className="whitespace-pre-wrap break-words text-cloud">{theirs?.answer}</p></div>
+                    </div>
+                  ) : <p className="text-lilac">You: {mine?.answer ?? "-"} · {partnerName}: {theirs?.answer ?? "-"}</p>}
                 </li>
               );
             })}

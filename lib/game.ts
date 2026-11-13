@@ -1,8 +1,9 @@
 export type GameType =
   | "who_knows" | "guess_my_answer" | "this_or_that" | "relationship_trivia"
-  | "would_you_rather" | "finish_sentence" | "memory_challenge" | "compatibility";
+  | "would_you_rather" | "finish_sentence" | "memory_challenge" | "compatibility" | "every_lifetime";
 
 export const GAMES: { type: GameType; name: string; blurb: string; predicts: boolean }[] = [
+  { type: "every_lifetime", name: "Find Me in Every Lifetime", blurb: "Follow each other’s clues through the past, present, and future, then reunite. Four story rounds.", predicts: false },
   { type: "who_knows", name: "Who knows whom better?", blurb: "Answer for yourself, then guess what your person picked.", predicts: true },
   { type: "guess_my_answer", name: "Guess my answer", blurb: "Type your answer and your prediction of theirs. Both appear at once.", predicts: true },
   { type: "this_or_that", name: "This or that", blurb: "Quick picks. See where you match.", predicts: false },

@@ -16,7 +16,6 @@ import {
   X
 } from "lucide-react";
 import { Button } from "@/components/ui";
-import { buildGoogleCalendarUrl } from "@/lib/calendar";
 
 export interface CheckInData {
   seat: string;
@@ -40,7 +39,7 @@ export const TIME_SLOT_OPTIONS = [
     icon: "🌙"
   },
   {
-    label: "Both (can't get of you)",
+    label: "Both (can’t get enough of you)",
     name: "Both",
     sub: "Can't get enough of you 💕",
     icon: "✨"
@@ -50,7 +49,7 @@ export const TIME_SLOT_OPTIONS = [
 interface CheckInModalProps {
   open: boolean;
   onClose: () => void;
-  onComplete: (data: CheckInData) => void;
+  onComplete: (data: CheckInData) => Promise<void>;
   initialData?: CheckInData | null;
 }
 
@@ -75,7 +74,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
   const [timeSlot, setTimeSlot] = useState<string>(initialData?.timeSlot || TIME_SLOT_OPTIONS[2].label);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     setIsSubmitting(true);
     const selectedSlot = timeSlot || TIME_SLOT_OPTIONS[2].label;
     const data: CheckInData = {
@@ -86,29 +85,17 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
       checkedInAt: new Date().toISOString()
     };
 
-    // Open Google Calendar event pre-filled with both email addresses & time slot
     try {
-      const gcalUrl = buildGoogleCalendarUrl({
-        slot: selectedSlot,
-        destination: data.firstStop,
-        memory: data.memory,
-        guests: ["vrushabhcr7@gmail.com", "yuktasoni05@gmail.com"]
-      });
-      window.open(gcalUrl, "_blank", "noopener,noreferrer");
-    } catch (err) {
-      console.warn("Could not open Google Calendar window:", err);
-    }
-
-    setTimeout(() => {
+      await onComplete(data);
+    } finally {
       setIsSubmitting(false);
-      onComplete(data);
-    }, 400);
+    }
   };
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center safe-modal-x sm:items-center sm:p-6">
       {/* Dark backdrop with celestial blur */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -124,17 +111,17 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        className="relative z-10 w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-[28px] border border-lilac/30 bg-[#251B38] text-cloud shadow-2xl"
+        className="relative z-10 w-full max-w-lg max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)-1rem))] overflow-y-auto overscroll-contain rounded-t-[28px] pb-[env(safe-area-inset-bottom)] sm:rounded-[28px] border border-lilac/30 bg-[#251B38] text-cloud shadow-2xl"
       >
         {/* Airline Top Banner */}
-        <div className="flex items-center justify-between border-b border-lilac/15 bg-gradient-to-r from-midnight via-[#30214B] to-midnight px-6 py-4">
+        <div className="flex items-center justify-between border-b border-lilac/15 bg-gradient-to-r from-midnight via-[#30214B] to-midnight px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-blush">
             <Plane className="h-4 w-4" />
             <span>Our Little Universe • Flight ILU-16 Check-in</span>
           </div>
           <button
             onClick={onClose}
-            className="rounded-full p-1.5 text-lilac hover:bg-cloud/10 hover:text-cloud transition"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-lilac hover:bg-cloud/10 hover:text-cloud transition"
             aria-label="Close check-in"
           >
             <X className="h-4 w-4" />
@@ -330,7 +317,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                     Anniversary date time • 16 November
                   </h3>
                   <p className="mt-1 text-sm text-lilac">
-                    Choose when we celebrate together. Syncs to Google Calendar for both of us.
+                    Choose when we celebrate together. Calendar links appear after check-in.
                   </p>
                 </div>
 
@@ -415,7 +402,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                     className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110"
                   >
                     <Calendar className="h-4 w-4 mr-1 text-midnight" />
-                    Complete Check-in & Sync Calendar
+                    {isSubmitting ? "Saving check-in…" : "Complete check-in"}
                   </Button>
                 </div>
               </motion.div>

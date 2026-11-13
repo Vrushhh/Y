@@ -37,10 +37,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       {!isLocked && <Nav />}
 
       <main
-        className={`mx-auto w-full max-w-6xl px-4 ${
+        className={`mx-auto w-full max-w-6xl safe-page-x ${
           isLocked
-            ? "py-8"
-            : "pb-[calc(8rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 lg:pl-28 lg:pt-12"
+            ? "pb-24 pt-safe"
+            : "pb-[calc(8rem+env(safe-area-inset-bottom))] pt-safe sm:px-6 lg:pl-28 lg:pt-12"
         }`}
       >
         {ready && relationship && !isLocked && (
@@ -53,6 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={path}
+            className="min-w-0"
             initial={shouldAnimate ? { opacity: 0, y: 8 } : false}
             animate={{ opacity: 1, y: 0 }}
             exit={shouldAnimate ? { opacity: 0, y: -6 } : undefined}

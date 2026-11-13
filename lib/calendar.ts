@@ -6,6 +6,7 @@ export interface CalendarEventOptions {
   slot: "14:00 to 16:00" | "21:00 to 23:00" | "both" | string;
   destination?: string;
   memory?: string;
+  seat?: string;
   guests?: string[];
 }
 
@@ -26,18 +27,14 @@ export function getCalendarEventTimes(slot: string): { startUTC: string; endUTC:
     };
   }
 
-  // Default: Both (can't get enough of you)
-  return {
-    startUTC: "20261116T083000Z", // 14:00 IST
-    endUTC: "20261116T173000Z",   // 23:00 IST
-    label: "Both 14:00–16:00 & 21:00–23:00 IST (Can't get enough of you 💕)"
-  };
+  return getCalendarEventTimes("14:00 to 16:00");
 }
 
 export function buildGoogleCalendarUrl({
   slot,
   destination = "A Lifetime of Love",
   memory,
+  seat = "Beside me",
   guests = ["vrushabhcr7@gmail.com", "yuktasoni05@gmail.com"]
 }: CalendarEventOptions): string {
   const { startUTC, endUTC, label } = getCalendarEventTimes(slot);
@@ -49,7 +46,7 @@ export function buildGoogleCalendarUrl({
     `📍 First Stop: ${destination}`,
     memory ? `💭 Packed Funniest Memory: “${memory}”` : null,
     "✨ Passenger: Yukku & Sonu",
-    "💺 Seat: Beside me",
+    `💺 Seat: ${seat}`,
     "🌐 Platform: https://ourlittleuniverse16.vercel.app"
   ]
     .filter(Boolean)
@@ -67,3 +64,13 @@ export function buildGoogleCalendarUrl({
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+
+export function buildGoogleCalendarLinks(options: CalendarEventOptions) {
+  if (options.slot.toLowerCase().includes("both")) {
+    return [
+      { label: "Add afternoon date to Google Calendar", href: buildGoogleCalendarUrl({ ...options, slot: "14:00 to 16:00" }) },
+      { label: "Add evening date to Google Calendar", href: buildGoogleCalendarUrl({ ...options, slot: "21:00 to 23:00" }) }
+    ];
+  }
+  return [{ label: "Add to Google Calendar", href: buildGoogleCalendarUrl(options) }];
+}

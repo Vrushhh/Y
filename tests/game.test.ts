@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GAMES, norm, scoreRound, similarity, usesPrediction } from "@/lib/game";
 
 describe("game scoring (mirrors SQL)", () => {
-  it("has eight game modes", () => expect(GAMES).toHaveLength(8));
+  it("has nine game modes", () => expect(GAMES).toHaveLength(9));
   it("normalises answers", () => expect(norm("  Mountains   by  the Sea ")).toBe("mountains by the sea"));
   it("scores predictions against the partner's real answer", () => {
     const r = scoreRound("who_knows", { answer: "Cat", prediction: "Dog" }, { answer: "Dog", prediction: "Fish" }, 10);

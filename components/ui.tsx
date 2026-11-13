@@ -109,7 +109,7 @@ export function Modal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6"
+          className="fixed inset-0 z-50 flex items-end justify-center safe-modal-x sm:items-center sm:p-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -121,7 +121,7 @@ export function Modal({
             aria-modal="true"
             aria-label={title}
             className={clsx(
-              "glass-strong relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-t-[28px] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:rounded-[24px] shadow-2xl border border-lilac/25",
+              "glass-strong relative max-h-[92dvh] w-full overflow-y-auto overscroll-contain rounded-t-[28px] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6 sm:rounded-[24px] shadow-2xl border border-lilac/25",
               wide ? "sm:max-w-3xl" : "sm:max-w-lg"
             )}
             initial={{ y: 12, opacity: 0, scale: 0.99 }}
@@ -179,9 +179,9 @@ export function Select({ className, children, ...p }: SelectHTMLAttributes<HTMLS
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 className="font-display text-4xl font-medium leading-tight text-cloud sm:text-5xl">{title}</h1>
+    <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <h1 className="break-words font-display text-4xl font-medium leading-tight text-cloud sm:text-5xl">{title}</h1>
         {subtitle && <p className="mt-2 max-w-xl text-lilac leading-relaxed">{subtitle}</p>}
       </div>
       {action && <div className="flex shrink-0 flex-wrap gap-2">{action}</div>}

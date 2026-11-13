@@ -19,6 +19,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
+import { getSupabase } from "@/lib/supabase/client";
 import { countdown } from "@/lib/time";
 import { Button } from "@/components/ui";
 
@@ -41,7 +42,8 @@ export function UniverseGate({
   children: ReactNode;
   onLockChange?: (locked: boolean) => void;
 }) {
-  const { email, mode } = useApp();
+  const { email, mode, userId } = useApp();
+  const isSonu = email === "vrushabhcr7@gmail.com";
   const [now, setNow] = useState<Date>(new Date());
   const [checkInData, setCheckInData] = useState<CarryOnData | null>(null);
   const [pin, setPin] = useState("");
@@ -55,29 +57,19 @@ export function UniverseGate({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const tg = params.get("test-gate");
-    if (tg) setPreviewGate(tg);
-    if (params.get("unlock-all") === "1") {
-      try {
-        localStorage.setItem("olu:pin_unlocked", CORRECT_PIN);
-      } catch {}
-      setIsUnlocked(true);
+    if (isSonu || mode === "preview") setPreviewGate(params.get("test-gate"));
+    setIsUnlocked(Boolean(userId) && localStorage.getItem(`olu:gate-unlocked:${userId}`) === "1");
+    setCheckInData(null);
+    if (mode === "preview") {
+      try { setCheckInData(JSON.parse(localStorage.getItem("olu:checkin") ?? "null")); } catch {}
+      return;
     }
-
-    try {
-      const savedUnlock = localStorage.getItem("olu:pin_unlocked");
-      if (savedUnlock === CORRECT_PIN) {
-        setIsUnlocked(true);
-      }
-    } catch {}
-
-    try {
-      const stored = localStorage.getItem("olu:checkin");
-      if (stored) {
-        setCheckInData(JSON.parse(stored));
-      }
-    } catch {}
-  }, []);
+    if (!userId) return;
+    let active = true;
+    getSupabase()?.from("user_preferences").select("boarding_checkin").eq("user_id", userId).maybeSingle()
+      .then(({ data }) => { if (active) setCheckInData(data?.boarding_checkin ?? null); });
+    return () => { active = false; };
+  }, [isSonu, mode, userId]);
 
   // Real-time clock tick
   useEffect(() => {
@@ -122,8 +114,6 @@ export function UniverseGate({
     return "slot-pin-gate";
   }, [effectiveNow, slotStartTime]);
 
-  // Is Sonu viewing? (Sonu = vrushabhcr7@gmail.com)
-  const isSonu = email === "vrushabhcr7@gmail.com";
   const effectiveLocked = (!isSonu || sonuPreviewMode) && !isUnlocked;
 
   useEffect(() => {
@@ -132,7 +122,7 @@ export function UniverseGate({
 
   // Handle PIN input
   const handleDigit = (digit: string) => {
-    if (pin.length >= 4) return;
+    if (gateStage !== "slot-pin-gate" || (!userId && mode !== "preview") || pin.length >= 4) return;
     const nextPin = pin + digit;
     setPin(nextPin);
     setPinError(false);
@@ -141,7 +131,7 @@ export function UniverseGate({
       if (nextPin === CORRECT_PIN) {
         setCelebrating(true);
         try {
-          localStorage.setItem("olu:pin_unlocked", CORRECT_PIN);
+          if (userId) localStorage.setItem(`olu:gate-unlocked:${userId}`, "1");
         } catch {}
         setTimeout(() => {
           setIsUnlocked(true);
@@ -187,7 +177,7 @@ export function UniverseGate({
   if (isSonu && !sonuPreviewMode) {
     return (
       <>
-        <div className="fixed top-2 right-2 z-50 flex items-center gap-1.5 rounded-full bg-midnight/90 border border-gold/30 px-3 py-1 text-[11px] font-medium text-gold backdrop-blur shadow-lg">
+        <div className="fixed top-[calc(0.5rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-50 flex items-center gap-1.5 rounded-full bg-midnight/90 border border-gold/30 px-3 py-1 text-[11px] font-medium text-gold backdrop-blur shadow-lg">
           <span>👑 Sonu Admin Mode</span>
           <button
             type="button"
@@ -202,7 +192,11 @@ export function UniverseGate({
     );
   }
 
-  // If unlocked via PIN (1101), render the unlocked website!
+  if (!userId && mode !== "preview" && gateStage === "slot-pin-gate") {
+    return <div className="glass mx-auto max-w-lg rounded-3xl p-6 text-center"><Link href="/login" className="text-blush underline">Sign in to unlock Our Little Universe</Link></div>;
+  }
+
+  // If unlocked via PIN, render the unlocked website!
   if (isUnlocked) {
     return (
       <>
@@ -212,7 +206,7 @@ export function UniverseGate({
             type="button"
             onClick={() => {
               try {
-                localStorage.removeItem("olu:pin_unlocked");
+                if (userId) localStorage.removeItem(`olu:gate-unlocked:${userId}`);
               } catch {}
               setIsUnlocked(false);
               setPin("");
@@ -314,7 +308,7 @@ export function UniverseGate({
           </div>
 
           <div className="space-y-2">
-            <h1 className="font-display text-3xl sm:text-4xl text-cloud leading-tight">
+            <h1 className="font-display text-[clamp(1.25rem,6vw,1.875rem)] sm:text-4xl text-cloud leading-tight">
               Passenger Yukku, hold onto your boarding pass.
             </h1>
             <p className="text-sm sm:text-base text-lilac">
@@ -327,27 +321,27 @@ export function UniverseGate({
             <p className="text-xs font-bold uppercase tracking-widest text-gold mb-3 flex items-center justify-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-gold" /> Flight Departure Countdown
             </p>
-            <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="grid grid-cols-4 gap-1 text-center sm:gap-2">
               <div className="rounded-xl bg-[#30214B] p-3 border border-lilac/15">
-                <span className="font-display text-3xl sm:text-4xl font-bold text-cream">
+                <span className="font-display text-[clamp(1.25rem,6vw,1.875rem)] sm:text-4xl font-bold text-cream">
                   {countdownToMidnight.days}
                 </span>
                 <span className="block text-[10px] uppercase font-bold text-lilac mt-1">Days</span>
               </div>
               <div className="rounded-xl bg-[#30214B] p-3 border border-lilac/15">
-                <span className="font-display text-3xl sm:text-4xl font-bold text-cream">
+                <span className="font-display text-[clamp(1.25rem,6vw,1.875rem)] sm:text-4xl font-bold text-cream">
                   {countdownToMidnight.hours}
                 </span>
                 <span className="block text-[10px] uppercase font-bold text-lilac mt-1">Hours</span>
               </div>
               <div className="rounded-xl bg-[#30214B] p-3 border border-lilac/15">
-                <span className="font-display text-3xl sm:text-4xl font-bold text-cream">
+                <span className="font-display text-[clamp(1.25rem,6vw,1.875rem)] sm:text-4xl font-bold text-cream">
                   {countdownToMidnight.minutes}
                 </span>
                 <span className="block text-[10px] uppercase font-bold text-lilac mt-1">Mins</span>
               </div>
               <div className="rounded-xl bg-[#30214B] p-3 border border-lilac/15">
-                <span className="font-display text-3xl sm:text-4xl font-bold text-cream">
+                <span className="font-display text-[clamp(1.25rem,6vw,1.875rem)] sm:text-4xl font-bold text-cream">
                   {countdownToMidnight.seconds}
                 </span>
                 <span className="block text-[10px] uppercase font-bold text-lilac mt-1">Secs</span>
@@ -399,7 +393,7 @@ export function UniverseGate({
           </div>
 
           <div className="space-y-2">
-            <h1 className="font-display text-3xl sm:text-4xl text-cloud leading-tight">
+            <h1 className="font-display text-[clamp(1.25rem,6vw,1.875rem)] sm:text-4xl text-cloud leading-tight">
               Countdown to our anniversary date orbit.
             </h1>
             <p className="text-sm sm:text-base text-lilac">
@@ -415,19 +409,19 @@ export function UniverseGate({
             </p>
             <div className="grid grid-cols-3 gap-3 text-center max-w-sm mx-auto">
               <div className="rounded-xl bg-[#30214B] p-3 border border-gold/20">
-                <span className="font-display text-3xl sm:text-4xl font-bold text-cream">
+                <span className="font-display text-[clamp(1.25rem,6vw,1.875rem)] sm:text-4xl font-bold text-cream">
                   {countdownToSlot.hours}
                 </span>
                 <span className="block text-[10px] uppercase font-bold text-gold mt-1">Hours</span>
               </div>
               <div className="rounded-xl bg-[#30214B] p-3 border border-gold/20">
-                <span className="font-display text-3xl sm:text-4xl font-bold text-cream">
+                <span className="font-display text-[clamp(1.25rem,6vw,1.875rem)] sm:text-4xl font-bold text-cream">
                   {countdownToSlot.minutes}
                 </span>
                 <span className="block text-[10px] uppercase font-bold text-gold mt-1">Minutes</span>
               </div>
               <div className="rounded-xl bg-[#30214B] p-3 border border-gold/20">
-                <span className="font-display text-3xl sm:text-4xl font-bold text-cream">
+                <span className="font-display text-[clamp(1.25rem,6vw,1.875rem)] sm:text-4xl font-bold text-cream">
                   {countdownToSlot.seconds}
                 </span>
                 <span className="block text-[10px] uppercase font-bold text-gold mt-1">Seconds</span>

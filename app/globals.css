@@ -104,3 +104,31 @@ body {
   font-weight: 400;
   letter-spacing: -0.01em;
 }
+
+@layer utilities {
+  .safe-page-x {
+    padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right));
+  }
+
+  .safe-modal-x {
+    padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+  }
+
+  .safe-dock-x {
+    left: max(0.75rem, env(safe-area-inset-left));
+    right: max(0.75rem, env(safe-area-inset-right));
+  }
+
+  .pt-safe {
+    padding-top: calc(2rem + env(safe-area-inset-top));
+  }
+}
+
+@media (pointer: coarse) {
+  html { scrollbar-gutter: auto; }
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}

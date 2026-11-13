@@ -26,7 +26,7 @@ type Stage = "ticket" | "envelope" | "opening" | "letter";
 
 export default function Welcome() {
   const router = useRouter();
-  const { mode, ready, userId, relationship, toast } = useApp();
+  const { mode, ready, userId, email, relationship, toast } = useApp();
   const reducedMotion = useReducedMotion();
   const [stage, setStage] = useState<Stage>("ticket");
   const [now, setNow] = useState<Date | null>(null);
@@ -46,8 +46,9 @@ export default function Welcome() {
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("boarding-preview");
-    if (p) setPreview(p);
-  }, []);
+    const canPreview = mode === "preview" || process.env.NODE_ENV !== "production" || email === "vrushabhcr7@gmail.com";
+    setPreview(canPreview ? p : null);
+  }, [email, mode]);
 
   useEffect(() => {
     if (!localCheckInMode) return;
@@ -138,25 +139,7 @@ export default function Welcome() {
         if (error) throw error;
         setAccountCheckIn({ userId, data });
 
-        // Also save to shared letters table so partner dashboard can display her funniest memory!
-        try {
-          const payload = JSON.stringify(data);
-          const { data: existing } = await sb.from("letters").select("id").eq("title", "Yukku's Carry-on Memory").maybeSingle();
-          if (existing?.id) {
-            await sb.from("letters").update({ content: payload }).eq("id", existing.id);
-          } else {
-            await sb.from("letters").insert({
-              title: "Yukku's Carry-on Memory",
-              content: payload,
-              letter_type: "anniversary",
-              is_draft: false
-            });
-          }
-        } catch (e) {
-          console.warn("Could not sync shared carry-on memory:", e);
-        }
       }
-      localStorage.setItem("olu:checkin", JSON.stringify(data));
       setCheckInModalOpen(false);
     } catch {
       toast("Your check-in couldn’t be saved. Please try again.", "error");
@@ -200,7 +183,7 @@ export default function Welcome() {
   ] as const;
 
   return (
-    <main className="relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden px-4 py-10 sm:px-8 sm:py-16">
+    <main className="relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden safe-page-x pb-[calc(7rem+env(safe-area-inset-bottom))] pt-safe sm:px-8 sm:py-16">
       <Starfield density={1.3} />
 
       <AnimatePresence mode="wait" initial={false}>
@@ -214,8 +197,8 @@ export default function Welcome() {
             {/* The Authentic Airline Boarding Pass */}
             <article className="relative overflow-hidden rounded-[28px] bg-cream text-midnight shadow-2xl sm:grid sm:grid-cols-[minmax(0,1fr)_12rem] border border-lilac/30">
               {/* Main Ticket Body */}
-              <div className="p-6 sm:p-8">
-                <div className="flex items-center justify-between">
+              <div className="p-4 sm:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.22em] text-[#654367]">
                     <Plane className="h-4 w-4" aria-hidden="true" /> Our Little Universe
                   </div>
@@ -237,7 +220,7 @@ export default function Welcome() {
                       <dt className="text-[11px] font-bold uppercase tracking-[0.15em] text-[#654367]">
                         {label}
                       </dt>
-                      <dd className="mt-0.5 text-sm font-semibold sm:text-base text-midnight line-clamp-1">
+                      <dd className="mt-0.5 text-sm font-semibold sm:text-base text-midnight break-words">
                         {value}
                       </dd>
                     </div>
@@ -249,7 +232,7 @@ export default function Welcome() {
               <motion.aside
                 animate={stubTorn ? { x: 120, y: 40, rotate: 20, opacity: 0 } : { x: 0, y: 0, rotate: 0, opacity: 1 }}
                 transition={{ duration: 0.5, ease: "easeIn" }}
-                className="relative flex items-center justify-between gap-4 border-t-2 border-dashed border-midnight/25 bg-[#e9d1e3] px-6 py-5 sm:flex-col sm:justify-center sm:border-l-2 sm:border-t-0 sm:px-4"
+                className="relative flex items-center justify-between gap-3 border-t-2 border-dashed border-midnight/25 bg-[#e9d1e3] px-4 py-5 sm:flex-col sm:justify-center sm:border-l-2 sm:border-t-0 sm:px-4"
                 aria-label="Ticket stub"
               >
                 {/* Perforation notch dots */}
@@ -325,7 +308,7 @@ export default function Welcome() {
             </article>
 
             {/* Flight & Check-in Status Section */}
-            <section aria-label="Boarding status" className="glass rounded-[26px] p-6 text-center border border-lilac/20 shadow-xl space-y-4">
+            <section aria-label="Boarding status" className="glass rounded-[26px] p-4 text-center sm:p-6 border border-lilac/20 shadow-xl space-y-4">
               {boarding ? (
                 /* Departure Day (16 November) */
                 <div className="space-y-4">
@@ -341,7 +324,7 @@ export default function Welcome() {
                     size="lg"
                     onClick={board}
                     disabled={!ready}
-                    className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110 text-base px-8 py-3"
+                    className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110 text-base px-4 py-3 sm:px-8"
                   >
                     Now boarding <ArrowRight className="h-5 w-5 ml-1.5" aria-hidden="true" />
                   </Button>
@@ -371,7 +354,7 @@ export default function Welcome() {
                           if (signedOut && !localCheckInMode) router.push("/login?next=%2Fboardingpass");
                           else setCheckInModalOpen(true);
                         }}
-                        className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110 text-base px-8 py-3"
+                        className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110 text-base px-4 py-3 sm:px-8"
                       >
                         <Plane className="h-5 w-5 mr-2" /> Check in for our next orbit
                       </Button>

@@ -12,7 +12,7 @@ import { MediaImage } from "@/components/MediaInputs";
 import { DemoBadge } from "@/components/ui";
 import { countdown, formatDate, nextAnniversary, ordinal } from "@/lib/time";
 import { getAuthoritativeTodayReason, type JarReason } from "@/lib/jar";
-import { buildGoogleCalendarUrl } from "@/lib/calendar";
+import { buildGoogleCalendarLinks } from "@/lib/calendar";
 
 const EXPERIENCES = [
   { href: "/our-days", title: "Our days", body: "One Second of Us, a weekly question, and Then & Now.", icon: Camera, hue: "from-[#E8B9D0]/40 to-[#40345C]/30" },
@@ -30,10 +30,10 @@ type Memory = Row & { title: string; location_name?: string; memory_date?: strin
 type Reason = Row & { content: string };
 type Goal = Row & { title: string; completed: boolean; target_date?: string };
 type Song = Row & { title: string; artist?: string; is_favourite?: boolean };
-type CarryOnData = { seat?: string; memory: string; firstStop?: string; timeSlot?: string; checkedInAt?: string };
+type CarryOnData = { seat?: string; memory?: string; firstStop?: string; timeSlot?: string; checkedInAt?: string };
 
 export default function Universe() {
-  const { me, partner, startDate, relationship, unlocks } = useApp();
+  const { me, partner, startDate, relationship, unlocks, userId } = useApp();
   const memories = useCollection<Memory>("memories", { order: "created_at", ascending: false });
   const goals = useCollection<Goal>("bucket_list", { order: "created_at" });
   const songs = useCollection<Song>("songs", { realtime: false });
@@ -48,41 +48,18 @@ export default function Universe() {
     });
     const t = setInterval(() => setNow(new Date()), 60_000);
 
-    // Fetch Yukku's Carry-on funniest memory from shared letters
-    const sb = getSupabase();
-    if (sb) {
-      sb.from("letters")
-        .select("content, created_at")
-        .eq("title", "Yukku's Carry-on Memory")
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data?.content) {
-            try {
-              setYukkuCheckIn(JSON.parse(data.content));
-            } catch {
-              setYukkuCheckIn({
-                memory: data.content,
-                seat: "Beside me",
-                firstStop: "A Lifetime of Love",
-                checkedInAt: data.created_at
-              });
-            }
-          }
-        });
-    }
-
-    try {
-      const local = localStorage.getItem("olu:checkin");
-      if (local) {
-        const parsed = JSON.parse(local);
-        if (parsed?.memory) {
-          setYukkuCheckIn((prev) => prev ?? parsed);
-        }
-      }
-    } catch {}
-
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    setYukkuCheckIn(null);
+    if (!userId || !relationship?.id) return;
+    let active = true;
+    getSupabase()?.rpc("partner_boarding_checkin").then(({ data, error }) => {
+      if (active && !error) setYukkuCheckIn(data);
+    });
+    return () => { active = false; };
+  }, [userId, relationship?.id]);
 
   const anniversary = now ? nextAnniversary(startDate, now) : null;
   const left = anniversary && now ? countdown(anniversary.date, now) : null;
@@ -109,7 +86,7 @@ export default function Universe() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1, duration: 0.4 }}
-              className="mt-2 font-display text-5xl font-light leading-[1.05] text-cloud sm:text-6xl"
+              className="mt-2 break-words font-display text-[clamp(2.5rem,9vw,3rem)] font-light leading-[1.05] text-cloud sm:text-6xl"
             >
               {relationship?.name ?? "Our Little Universe"}
             </motion.h1>
@@ -150,7 +127,7 @@ export default function Universe() {
         >
           <Link
             href={featured ? "/memories" : "/memories?add=1"}
-            className="group relative block aspect-[4/5] overflow-hidden rounded-[28px] border border-lilac/20 sm:aspect-[4/3] lg:aspect-[4/5] shadow-2xl"
+            className="group relative block aspect-[4/3] overflow-hidden rounded-[28px] border border-lilac/20 sm:aspect-[4/3] lg:aspect-[4/5] shadow-2xl"
           >
             {featured ? (
               <>
@@ -179,7 +156,7 @@ export default function Universe() {
       </section>
 
       {/* Experiences Grid */}
-      <section aria-label="Experiences" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+      <section aria-label="Experiences" className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         {EXPERIENCES.map(({ href, title, body, icon: Icon, hue }) => (
           <motion.div
             key={href}
@@ -273,14 +250,14 @@ export default function Universe() {
                 </span>
               </div>
 
-              {yukkuCheckIn?.memory ? (
+              {yukkuCheckIn ? (
                 <div className="mt-2.5 space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-gold flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 text-gold" /> Funniest Memory of Year One:
-                  </p>
-                  <p className="font-hand text-xl text-cream leading-snug">
-                    &ldquo;{yukkuCheckIn.memory}&rdquo;
-                  </p>
+                  <p className="font-semibold text-cloud">Yukku checked in</p>
+                  {yukkuCheckIn.memory && (
+                    <p className="font-hand text-xl text-cream leading-snug">
+                      &ldquo;{yukkuCheckIn.memory}&rdquo;
+                    </p>
+                  )}
                   <div className="pt-2 border-t border-lilac/10 text-[11px] text-lilac/80 flex flex-wrap items-center justify-between gap-1">
                     <span>Seat: <strong className="text-cloud">{yukkuCheckIn.seat || "Beside me"}</strong></span>
                     {yukkuCheckIn.timeSlot && (
@@ -292,19 +269,21 @@ export default function Universe() {
                   </div>
                   {yukkuCheckIn.timeSlot && (
                     <div className="pt-2">
-                      <a
-                        href={buildGoogleCalendarUrl({
+                      {buildGoogleCalendarLinks({
                           slot: yukkuCheckIn.timeSlot,
                           destination: yukkuCheckIn.firstStop,
                           memory: yukkuCheckIn.memory,
+                          seat: yukkuCheckIn.seat,
                           guests: ["vrushabhcr7@gmail.com", "yuktasoni05@gmail.com"]
-                        })}
+                        }).map(({ href, label }) => (
+                        <a key={href} href={href}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3 py-1 text-[11px] font-bold text-gold hover:bg-gold/25 transition"
                       >
-                        <Calendar className="h-3 w-3" /> Add to Google Calendar ↗
-                      </a>
+                        <Calendar className="h-3 w-3" /> {label} ↗
+                        </a>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -314,7 +293,7 @@ export default function Universe() {
                     Waiting for Yukku’s Check-in
                   </p>
                   <p className="text-xs text-lilac/80 leading-relaxed">
-                    Yukku hasn’t checked in yet. When she checks in on 14th November, her funniest memory will appear right here 💕
+                    Yukku hasn’t checked in yet. Her seat and plans will appear here after she checks in.
                   </p>
                 </div>
               )}

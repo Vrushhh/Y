@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, Coins, ExternalLink, Globe2, Heart, Loader2, Palette, Plus, Sparkles, Trash2, Trophy, Users } from "lucide-react";
+import { ArrowRight, Coins, ExternalLink, Globe2, Heart, Loader2, Palette, Plus, Sparkles, Trash2, Trophy, Tv, Users } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
 import { getSupabase } from "@/lib/supabase/client";
 import { GAMES, gameName, type GameType } from "@/lib/game";
@@ -54,7 +54,7 @@ export default function DateMode() {
     setBusy(type);
     setLaunchError(null);
     try {
-      const { data, error } = await sb.rpc("create_game_room", { p_game_type: type, p_rounds: rounds });
+      const { data, error } = await sb.rpc("create_game_room", { p_game_type: type, p_rounds: type === "every_lifetime" ? 4 : rounds });
       if (error || !data) {
         setLaunchError({ game: type, message: error?.message ?? "The server didn’t return a room. Try again." });
         setBusy(null);
@@ -171,6 +171,28 @@ export default function DateMode() {
         </a>
       </section>
 
+      <section className="glass mb-8 flex flex-col gap-5 rounded-[26px] p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+        <div className="flex items-start gap-4">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blush/15 text-blush">
+            <Tv className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="font-display text-3xl text-cloud">Watch Together</h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-lilac">
+              Meet in your Kosmi room, pick an episode, and settle in for a series night. Have one of you set up the episode in Kosmi and the other join the same room.
+            </p>
+          </div>
+        </div>
+        <a
+          href="https://app.kosmi.io/room/@vrushabhgam"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex shrink-0 items-center justify-center gap-2 self-start rounded-full bg-gradient-to-r from-blush to-lilac px-6 py-3 text-sm font-bold text-midnight shadow-glow transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blush sm:self-center"
+        >
+          Open Kosmi room <span className="sr-only">(opens in a new tab)</span> <ExternalLink className="h-4 w-4" aria-hidden="true" />
+        </a>
+      </section>
+
       {mode === "preview" ? (
         <EmptyState
           icon={<Users className="h-8 w-8" />}
@@ -250,7 +272,7 @@ export default function DateMode() {
         <div className="space-y-4">
           <Field label="Game">
             <Select value={q.game_type} onChange={(e) => setQ({ ...q, game_type: e.target.value })}>
-              {GAMES.map((g) => <option key={g.type} value={g.type}>{g.name}</option>)}
+              {GAMES.filter((g) => g.type !== "every_lifetime").map((g) => <option key={g.type} value={g.type}>{g.name}</option>)}
             </Select>
           </Field>
           <Field label="Question"><TextArea className="min-h-[80px]" value={q.question_text} onChange={(e) => setQ({ ...q, question_text: e.target.value })} /></Field>

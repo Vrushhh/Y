@@ -34,7 +34,7 @@ const STARS = [
 ];
 
 export default function SecretCorner() {
-  const { mode, userId, unlocks, unlock, toast } = useApp();
+  const { mode, userId, email, unlocks, unlock, toast } = useApp();
   const [moonTaps, setMoonTaps] = useState(0);
   const moonTapsRef = useRef(0);
   const [found, setFound] = useState<number[]>([]);
@@ -45,19 +45,17 @@ export default function SecretCorner() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ unlock_key: "moon", title: "", message: "", image: [] as string[] });
   const [error, setError] = useState<string | null>(null);
+  const canPreview = mode === "preview" || email === "vrushabhcr7@gmail.com";
   const [testUnlocked, setTestUnlocked] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = new URLSearchParams(window.location.search);
-    if (p.get("unlock-all") === "1" || p.get("deck") === "1") {
+    if (canPreview && (p.get("unlock-all") === "1" || p.get("deck") === "1")) {
       setTestUnlocked(true);
       setReviewOpen(true);
-      try {
-        localStorage.setItem("olu:pin_unlocked", "1101");
-      } catch {}
     }
-  }, []);
+  }, [canPreview]);
 
   const { items: memories } = useCollection<Memory>("memories", { order: "memory_date", ascending: false, realtime: false });
   const featured = memories.find((memory) => memory.image_paths?.[0]);
@@ -152,15 +150,12 @@ export default function SecretCorner() {
             {reviewUnlocked ? <Sparkles className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
             {reviewUnlocked ? "Watch the review" : "Review locked"}
           </Button>
-          {!reviewUnlocked && (
+          {canPreview && !reviewUnlocked && (
             <button
               type="button"
               onClick={() => {
                 setTestUnlocked(true);
                 setReviewOpen(true);
-                try {
-                  localStorage.setItem("olu:pin_unlocked", "1101");
-                } catch {}
               }}
               className="text-[11px] font-semibold text-lilac/70 hover:text-gold transition underline underline-offset-4 ml-1"
             >
