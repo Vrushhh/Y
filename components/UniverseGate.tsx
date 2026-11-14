@@ -43,7 +43,8 @@ export function UniverseGate({
 }) {
   const { email, mode, userId, refresh: refreshAccount } = useApp();
   const isSonu = email === "vrushabhcr7@gmail.com";
-  const entry = useSearchParams()?.get("from");
+  const searchParams = useSearchParams();
+  const entry = searchParams?.get("from");
   const fromBoardingPass = entry === "boarding-pass";
   const fromLetter = entry === "letter";
   const now = useBoardingClock();
@@ -55,20 +56,16 @@ export function UniverseGate({
   const [status, setStatus] = useState<{ userId: string; data: GateStatus | null } | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [previewGate, setPreviewGate] = useState<string | null>(null);
-  const [sonuPreviewMode, setSonuPreviewMode] = useState(false);
+  const testGateParam = canPreview ? searchParams?.get("test-gate") ?? null : null;
+  const sonuPreviewMode = isSonu && (searchParams?.get("as") === "yukta" || !!testGateParam);
 
-  // Check query params for testing: ?test-gate=nov14 | nov16-morning | slot | reset-pin=1 | as=yukta
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const testGateParam = canPreview ? params.get("test-gate") : null;
-    const asYukta = canPreview && (params.get("as") === "yukta" || Boolean(testGateParam));
-
-    if (asYukta) setSonuPreviewMode(true);
     setPreviewGate(testGateParam);
+  }, [testGateParam, sonuPreviewMode]);
 
+  useEffect(() => {
     setCheckInData(null);
-    if (mode === "preview" || asYukta) {
+    if (mode === "preview" || sonuPreviewMode) {
       try {
         const stored = localStorage.getItem(mode === "preview" ? "olu:checkin" : "olu:checkin-dev");
         if (stored) setCheckInData(JSON.parse(stored));
@@ -82,7 +79,7 @@ export function UniverseGate({
         if (!error && data?.boarding_checkin) setCheckInData(data.boarding_checkin);
       });
     return () => { active = false; };
-  }, [canPreview, mode, userId, fromBoardingPass]);
+  }, [mode, userId, fromBoardingPass, sonuPreviewMode]);
 
   const simulated = mode === "preview" || (isSonu && sonuPreviewMode && !fromBoardingPass && !fromLetter);
   const showAdminDashboard = isSonu && !sonuPreviewMode && !fromBoardingPass;
@@ -200,23 +197,28 @@ export function UniverseGate({
       <>
         <div className="fixed top-[calc(0.5rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-50 flex items-center gap-1.5 rounded-full bg-midnight/90 border border-gold/30 px-3 py-1 text-[11px] font-medium text-gold backdrop-blur shadow-lg">
           <span>👑 Sonu Admin Mode</span>
-          <button
-            type="button"
-            onClick={() => setSonuPreviewMode(true)}
+          <Link
+            href="/?as=yukta"
             className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-cream hover:bg-gold/25 transition ml-1"
           >
             Preview Yukku’s Gate
-          </button>
+          </Link>
         </div>
         {children}
       </>
     );
   }
 
+  const dashboardLink = isSonu && (
+    <Link href="/universe" className="fixed right-3 top-3 z-50 rounded-full border border-gold/30 bg-midnight px-4 py-2 text-sm text-cream">
+      Back to Sonu’s dashboard
+    </Link>
+  );
+
   if (!effectiveNow || (!simulated && userId && !liveStatus)) {
-    return <p role="status" className="py-10 text-center text-lilac">
+    return <>{dashboardLink}<p role="status" className="py-10 text-center text-lilac">
       {statusFailed ? "Couldn’t load your date slot. Retrying…" : "Checking your flight schedule…"}
-    </p>;
+    </p></>;
   }
 
   if (mode === "supabase" && !userId && effectiveNow >= DEPARTURE) {
@@ -249,6 +251,7 @@ export function UniverseGate({
 
   return (
     <div className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 py-8 text-center text-cloud">
+      {dashboardLink}
       {/* Test simulation toolbar (for testing Nov 14 -> Nov 16 -> Slot flow) */}
       {canPreview && !fromBoardingPass && <div className="mb-6 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl bg-midnight/80 border border-lilac/20 p-1.5 text-xs backdrop-blur shadow-md">
         <span className="text-[10px] uppercase font-bold text-lilac/70 px-2 flex items-center gap-1">
@@ -296,15 +299,7 @@ export function UniverseGate({
         >
           3. Date Slot Time (Secret PIN Gate)
         </button>
-        {isSonu && (
-          <button
-            type="button"
-            onClick={() => setSonuPreviewMode(false)}
-            className="rounded-lg bg-cloud/15 px-2 py-1 text-[10px] text-cream hover:bg-cloud/25 transition ml-1"
-          >
-            Exit Preview
-          </button>
-        )}
+
       </div>}
 
       {/* STAGE 1: Between Nov 14 (Check-in) and Nov 16 12:00 AM IST */}
