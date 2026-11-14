@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { BoardingAccount } from "@/components/BoardingAccount";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, CheckCircle2, Heart, Lock, Luggage, Plane, QrCode, Sparkles, UserCheck } from "lucide-react";
@@ -179,6 +180,7 @@ export default function Welcome() {
   return (
     <main className="relative isolate flex min-h-dvh flex-col items-center justify-center overflow-hidden safe-page-x pb-[calc(7rem+env(safe-area-inset-bottom))] pt-safe sm:px-8 sm:py-16">
       <Starfield density={1.3} />
+      <div className="relative z-10 mb-4"><BoardingAccount /></div>
       {ready && userId && email === "vrushabhcr7@gmail.com" && (
         <div className="relative z-10 mb-4 flex w-full max-w-2xl justify-end">
           <Link href="/universe" className="glass rounded-full px-4 py-2 text-sm font-semibold text-cream hover:text-blush">

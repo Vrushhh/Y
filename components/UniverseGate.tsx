@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { BoardingAccount } from "@/components/BoardingAccount";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -252,6 +253,7 @@ export function UniverseGate({
   return (
     <div className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 py-8 text-center text-cloud">
       {dashboardLink}
+      <div className="relative z-10 mb-4"><BoardingAccount /></div>
       {/* Test simulation toolbar (for testing Nov 14 -> Nov 16 -> Slot flow) */}
       {canPreview && !fromBoardingPass && <div className="mb-6 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl bg-midnight/80 border border-lilac/20 p-1.5 text-xs backdrop-blur shadow-md">
         <span className="text-[10px] uppercase font-bold text-lilac/70 px-2 flex items-center gap-1">
