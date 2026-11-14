@@ -33,13 +33,16 @@ type Song = Row & { title: string; artist?: string; is_favourite?: boolean };
 type CarryOnData = { seat?: string; memory?: string; firstStop?: string; timeSlot?: string; checkedInAt?: string };
 
 export default function Universe() {
-  const { me, partner, startDate, relationship, unlocks, userId } = useApp();
+  const { me, partner, startDate, relationship, unlocks, userId, email, toast } = useApp();
   const memories = useCollection<Memory>("memories", { order: "created_at", ascending: false });
   const goals = useCollection<Goal>("bucket_list", { order: "created_at" });
   const songs = useCollection<Song>("songs", { realtime: false });
   const [now, setNow] = useState<Date | null>(null);
   const [todayReason, setTodayReason] = useState<{ reason: JarReason; sequence: number } | null>(null);
   const [yukkuCheckIn, setYukkuCheckIn] = useState<CarryOnData | null>(null);
+  const [checkInStatus, setCheckInStatus] = useState<"loading" | "ready" | "error">("loading");
+  const canTrackCheckIn = email === "vrushabhcr7@gmail.com" && !!userId && !!relationship?.id;
+  const checkInTime = yukkuCheckIn?.checkedInAt ? Date.parse(yukkuCheckIn.checkedInAt) : NaN;
 
   useEffect(() => {
     setNow(new Date());
@@ -53,13 +56,40 @@ export default function Universe() {
 
   useEffect(() => {
     setYukkuCheckIn(null);
-    if (!userId || !relationship?.id) return;
+    setCheckInStatus("loading");
+    const supabase = getSupabase();
+    if (!canTrackCheckIn || !supabase) return;
+
     let active = true;
-    getSupabase()?.rpc("partner_boarding_checkin").then(({ data, error }) => {
-      if (active && !error) setYukkuCheckIn(data);
-    });
-    return () => { active = false; };
-  }, [userId, relationship?.id]);
+    let pending = false;
+    let previous: CarryOnData | null | undefined;
+    const refreshCheckIn = async () => {
+      if (pending || document.visibilityState !== "visible") return;
+      pending = true;
+      try {
+        const { data, error } = await supabase.rpc("partner_boarding_checkin");
+        if (!active) return;
+        if (error) throw error;
+        if (previous === null && data) toast("Yukku checked in for Flight ILU-16!");
+        previous = data;
+        setYukkuCheckIn(data);
+        setCheckInStatus("ready");
+      } catch {
+        if (active) setCheckInStatus("error");
+      } finally {
+        pending = false;
+      }
+    };
+
+    void refreshCheckIn();
+    const interval = window.setInterval(refreshCheckIn, 15_000);
+    document.addEventListener("visibilitychange", refreshCheckIn);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshCheckIn);
+    };
+  }, [canTrackCheckIn, userId, relationship?.id, toast]);
 
   const anniversary = now ? nextAnniversary(startDate, now) : null;
   const left = anniversary && now ? countdown(anniversary.date, now) : null;
@@ -237,8 +267,7 @@ export default function Universe() {
             </div>
           </div>
 
-          {/* Yukku's Carry-on Funniest Memory (Displayed below Jar Note) */}
-          <div className="glass glass-hover relative flex flex-col justify-between rounded-[24px] p-4 sm:p-5 border border-lilac/20 shadow-xl overflow-hidden bg-gradient-to-br from-[#2D1F3D]/80 via-midnight to-[#241A38]/90">
+          {canTrackCheckIn && <div className="glass glass-hover relative flex flex-col justify-between rounded-[24px] p-4 sm:p-5 border border-lilac/20 shadow-xl overflow-hidden bg-gradient-to-br from-[#2D1F3D]/80 via-midnight to-[#241A38]/90">
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blush">
@@ -250,9 +279,20 @@ export default function Universe() {
                 </span>
               </div>
 
-              {yukkuCheckIn ? (
+              <p className="mt-2.5 font-semibold text-cloud" role="status">
+                {checkInStatus === "error" ? "Couldn’t refresh check-in status. Retrying…" :
+                  checkInStatus === "loading" ? "Checking boarding status…" :
+                  yukkuCheckIn ? "Yukku checked in" : "Waiting for Yukku’s check-in"}
+              </p>
+              {yukkuCheckIn && (
                 <div className="mt-2.5 space-y-2">
-                  <p className="font-semibold text-cloud">Yukku checked in</p>
+                  {Number.isFinite(checkInTime) && (
+                    <p className="text-xs text-lilac">
+                      Last saved {new Intl.DateTimeFormat("en-IN", {
+                        dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kolkata"
+                      }).format(checkInTime)} IST
+                    </p>
+                  )}
                   {yukkuCheckIn.memory && (
                     <p className="font-hand text-xl text-cream leading-snug">
                       &ldquo;{yukkuCheckIn.memory}&rdquo;
@@ -287,15 +327,6 @@ export default function Universe() {
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="mt-2.5 py-1 space-y-1">
-                  <p className="font-display text-base text-cloud">
-                    Waiting for Yukku’s Check-in
-                  </p>
-                  <p className="text-xs text-lilac/80 leading-relaxed">
-                    Yukku hasn’t checked in yet. Her seat and plans will appear here after she checks in.
-                  </p>
-                </div>
               )}
             </div>
 
@@ -305,7 +336,7 @@ export default function Universe() {
               </Link>
               <span className="text-[10px] font-mono text-lilac/60">Gate 16</span>
             </div>
-          </div>
+          </div>}
         </div>
 
         {/* Next on our list */}
