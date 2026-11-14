@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { safeReturnPath } from "./lib/return-path";
+
 const URL_ = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const PUBLIC = ["/", "/boardingpass", "/boarding-pass", "/login", "/auth"];
@@ -29,10 +31,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
   if (user && path === "/login") {
-    const url = req.nextUrl.clone();
-    url.pathname = "/";
-    url.search = "";
-    return NextResponse.redirect(url);
+    const target = safeReturnPath(req.nextUrl.searchParams.get("next"), "/");
+    const redirect = NextResponse.redirect(new URL(target, req.url));
+    for (const cookie of res.cookies.getAll()) redirect.cookies.set(cookie);
+    return redirect;
   }
   return res;
 }

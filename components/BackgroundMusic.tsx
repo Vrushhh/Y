@@ -30,15 +30,6 @@ export function BackgroundMusic({ children }: { children: ReactNode }) {
   const hasEmbed = useRef(false);
 
   useEffect(() => {
-    if (pathname === "/login") {
-      setSelected(null);
-      hasEmbed.current = false;
-      audio.current?.pause();
-      if (audio.current) audio.current.src = "/audio/intro.mp3";
-    }
-  }, [pathname]);
-
-  useEffect(() => {
     const track = audio.current;
     if (!track) return;
 
@@ -52,11 +43,14 @@ export function BackgroundMusic({ children }: { children: ReactNode }) {
     const playIfAllowed = () => {
       if (!hasEmbed.current && !optedOut.current && track.paused) void track.play().catch(() => undefined);
     };
-    const onFirstClick = (event: MouseEvent) => {
+    const onFirstInteraction = (event: Event) => {
       if (event.target instanceof Element && event.target.closest("[data-music-control]")) return;
       playIfAllowed();
     };
-    const stopAutoStart = () => document.removeEventListener("click", onFirstClick, true);
+    const activationEvents = ["click", "touchend", "keydown"] as const;
+    const stopAutoStart = () => {
+      for (const event of activationEvents) document.removeEventListener(event, onFirstInteraction, true);
+    };
     const pauseForOtherMedia = (event: Event) => {
       if (event.target !== track && event.target instanceof HTMLMediaElement) {
         track.pause();
@@ -67,7 +61,7 @@ export function BackgroundMusic({ children }: { children: ReactNode }) {
       }
     };
 
-    document.addEventListener("click", onFirstClick, true);
+    for (const event of activationEvents) document.addEventListener(event, onFirstInteraction, true);
     document.addEventListener("play", pauseForOtherMedia, true);
     track.addEventListener("playing", stopAutoStart);
     playIfAllowed();
@@ -122,7 +116,7 @@ export function BackgroundMusic({ children }: { children: ReactNode }) {
         ref={audio}
         src="/audio/intro.mp3"
         loop
-        preload="none"
+        preload="auto"
         onPlaying={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onError={() => setPlaying(false)}

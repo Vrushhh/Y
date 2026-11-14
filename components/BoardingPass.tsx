@@ -1,20 +1,30 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import Image from "next/image";
 import { Calendar, ExternalLink, Heart, Luggage, MapPin, Music2, Sparkles, UserCheck } from "lucide-react";
 import { useApp } from "@/components/providers/AppProvider";
 import { useCollection, type Row } from "@/lib/useCollection";
 import type { CheckInData } from "@/components/CheckInModal";
+import { getSupabase } from "@/lib/supabase/client";
 import { buildGoogleCalendarLinks } from "@/lib/calendar";
 
 type Song = Row & { title: string; artist?: string | null; external_url?: string | null; is_favourite: boolean };
 type Letter = Row & { title: string; content: string; letter_type: string; is_draft: boolean };
 
 export function CarryOn({ checkInData }: { checkInData?: CheckInData | null }) {
-  const songs = useCollection<Song>("songs", { order: "created_at", ascending: false, realtime: false });
-  const tracks = songs.items.filter((item) => !item.is_demo && /^https?:\/\//i.test(item.external_url ?? ""));
-  const song = tracks.find((item) => item.is_favourite) ?? tracks[0];
+  const { userId } = useApp();
+  const [track, setTrack] = useState<{ userId: string; song: Pick<Song, "title" | "artist" | "external_url"> } | null>(null);
+  const song = track?.userId === userId ? track?.song : null;
+  const checkedInAt = checkInData?.checkedInAt;
+  useEffect(() => {
+    if (!userId || !checkedInAt) return;
+    let active = true;
+    getSupabase()?.rpc("anniversary_carry_on_track").maybeSingle().then(({ data, error }) => {
+      if (active && !error && data) setTrack({ userId, song: data as NonNullable<typeof track>["song"] });
+    });
+    return () => { active = false; };
+  }, [userId, checkedInAt]);
 
   return (
     <section className="glass space-y-4 rounded-[26px] p-4 sm:p-7 border border-lilac/20 shadow-2xl" aria-labelledby="carry-on">
@@ -95,7 +105,7 @@ export function CarryOn({ checkInData }: { checkInData?: CheckInData | null }) {
             alt="Yukku’s childhood portrait beside a pink butterfly"
             fill
             sizes="(min-width: 640px) 320px, 90vw"
-            style={{ objectFit: "cover", objectPosition: "center 58%", transform: "scale(1.65)", transformOrigin: "43% 48%" }}
+            style={{ objectFit: "cover", objectPosition: "center 51%", transform: "scale(1.65)", transformOrigin: "43% 48%" }}
           />
         </figure>
 

@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const reduceMotion = useReducedMotion();
   const shouldAnimate = prefs.animation_enabled && !reduceMotion;
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(true);
 
   let body: ReactNode = children;
   if (!ready) body = <Spinner label="Opening our universe" />;

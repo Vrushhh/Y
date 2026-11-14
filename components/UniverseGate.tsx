@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Calendar,
-  CheckCircle2,
   Clock,
   Delete,
   Heart,
@@ -21,11 +21,10 @@ import {
 import { useApp } from "@/components/providers/AppProvider";
 import { getSupabase } from "@/lib/supabase/client";
 import { countdown } from "@/lib/time";
+import { DEPARTURE, useBoardingClock } from "@/lib/boarding-clock";
 import { Button } from "@/components/ui";
 
-const ISSUED = new Date("2026-11-14T00:00:00+05:30");
-const DEPARTURE_MIDNIGHT = new Date("2026-11-16T00:00:00+05:30");
-const CORRECT_PIN = "1101";
+type GateStatus = { checkedIn: boolean; letterOpened: boolean; nextStart: string | null; slotOpen: boolean; unlocked: boolean };
 
 interface CarryOnData {
   seat?: string;
@@ -42,14 +41,19 @@ export function UniverseGate({
   children: ReactNode;
   onLockChange?: (locked: boolean) => void;
 }) {
-  const { email, mode, userId } = useApp();
+  const { email, mode, userId, refresh: refreshAccount } = useApp();
   const isSonu = email === "vrushabhcr7@gmail.com";
-  const [now, setNow] = useState<Date>(new Date());
+  const entry = useSearchParams()?.get("from");
+  const fromBoardingPass = entry === "boarding-pass";
+  const fromLetter = entry === "letter";
+  const now = useBoardingClock();
   const [checkInData, setCheckInData] = useState<CarryOnData | null>(null);
+  const canPreview = isSonu || mode === "preview";
   const [pin, setPin] = useState("");
-  const [pinError, setPinError] = useState(false);
+  const [pinError, setPinError] = useState("");
+  const [checkingPin, setCheckingPin] = useState(false);
+  const [status, setStatus] = useState<{ userId: string; data: GateStatus | null } | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const [celebrating, setCelebrating] = useState(false);
   const [previewGate, setPreviewGate] = useState<string | null>(null);
   const [sonuPreviewMode, setSonuPreviewMode] = useState(false);
 
@@ -57,25 +61,11 @@ export function UniverseGate({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const testGateParam = params.get("test-gate");
-    const asYukta = params.get("as") === "yukta" || Boolean(testGateParam);
+    const testGateParam = canPreview ? params.get("test-gate") : null;
+    const asYukta = canPreview && (params.get("as") === "yukta" || Boolean(testGateParam));
 
     if (asYukta) setSonuPreviewMode(true);
-    if (testGateParam) setPreviewGate(testGateParam);
-
-    const shouldRelock = params.get("reset-pin") === "1" || params.get("relock") === "1";
-    if (shouldRelock) {
-      setIsUnlocked(false);
-      try {
-        if (userId) localStorage.removeItem(`olu:gate-unlocked:${userId}`);
-        localStorage.removeItem("olu:gate-unlocked:guest");
-      } catch {}
-    } else {
-      const unlocked =
-        (Boolean(userId) && localStorage.getItem(`olu:gate-unlocked:${userId}`) === "1") ||
-        localStorage.getItem("olu:gate-unlocked:guest") === "1";
-      setIsUnlocked(unlocked);
-    }
+    setPreviewGate(testGateParam);
 
     setCheckInData(null);
     if (mode === "preview" || asYukta) {
@@ -87,100 +77,110 @@ export function UniverseGate({
     if (!userId) return;
     let active = true;
     getSupabase()?.from("user_preferences").select("boarding_checkin").eq("user_id", userId).maybeSingle()
-      .then(({ data }) => { if (active && data?.boarding_checkin) setCheckInData(data.boarding_checkin); });
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (!error && data?.boarding_checkin) setCheckInData(data.boarding_checkin);
+      });
     return () => { active = false; };
-  }, [isSonu, mode, userId]);
+  }, [canPreview, mode, userId, fromBoardingPass]);
 
-  // Real-time clock tick
+  const simulated = mode === "preview" || (isSonu && sonuPreviewMode && !fromBoardingPass && !fromLetter);
+  const showAdminDashboard = isSonu && !sonuPreviewMode && !fromBoardingPass;
+  const liveStatus = status?.userId === userId ? status?.data : null;
+  const statusFailed = status?.userId === userId && !status?.data;
+
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
+    if (mode !== "supabase" || !userId || showAdminDashboard || simulated) return;
+    let active = true;
+    let busy = false;
+    const refresh = async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        const { data, error } = await getSupabase()!.rpc("anniversary_gate_status");
+        if (active) setStatus({ userId, data: error ? null : data as GateStatus });
+      } catch {
+        if (active) setStatus({ userId, data: null });
+      } finally {
+        busy = false;
+      }
+    };
+    void refresh();
+    const interval = window.setInterval(refresh, 3_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [userId, mode, showAdminDashboard, simulated]);
 
-  // Compute effective simulated time based on preview mode
-  const effectiveNow = useMemo(() => {
-    if (previewGate === "nov14") {
-      return new Date("2026-11-14T15:00:00+05:30");
-    }
-    if (previewGate === "nov16-morning") {
-      return new Date("2026-11-16T09:30:00+05:30");
-    }
-    if (previewGate === "slot") {
-      return new Date("2026-11-16T14:30:00+05:30");
-    }
-    return now;
-  }, [now, previewGate]);
-
-  // Determine Slot Start Time on 16 November (default 14:00 IST)
-  const slotStartTime = useMemo(() => {
-    const slot = checkInData?.timeSlot?.toLowerCase() ?? "";
-    if (slot.includes("21:00") && !slot.includes("both")) {
-      return new Date("2026-11-16T21:00:00+05:30");
-    }
-    return new Date("2026-11-16T14:00:00+05:30");
-  }, [checkInData?.timeSlot]);
-
-  // Gate stages:
-  // 1. "nov14-to-nov16": Before Nov 16 12:00 AM IST
-  // 2. "nov16-to-slot": On Nov 16 between 12:00 AM IST and slotStartTime
-  // 3. "slot-pin-gate": During/after slot time -> Secret PIN prompt
-  const gateStage: "nov14-to-nov16" | "nov16-to-slot" | "slot-pin-gate" = useMemo(() => {
-    if (effectiveNow < DEPARTURE_MIDNIGHT) {
-      return "nov14-to-nov16";
-    }
-    if (effectiveNow < slotStartTime) {
-      return "nov16-to-slot";
-    }
-    return "slot-pin-gate";
-  }, [effectiveNow, slotStartTime]);
-
-  const effectiveLocked = (!isSonu || sonuPreviewMode) && !isUnlocked;
+  const effectiveNow =
+    simulated && previewGate === "nov14" ? new Date("2026-11-14T15:00:00+05:30") :
+    simulated && previewGate === "nov16-morning" ? new Date("2026-11-16T09:30:00+05:30") :
+    simulated && previewGate === "slot" ? new Date("2026-11-16T21:30:00+05:30") : now;
+  const previewSlot = new Date(checkInData?.timeSlot?.startsWith("21:00") ?
+    "2026-11-16T21:00:00+05:30" : "2026-11-16T14:00:00+05:30");
+  const slotStartTime = simulated ? previewSlot : liveStatus?.nextStart ? new Date(liveStatus.nextStart) : null;
+  const slotOpen = simulated ? !!effectiveNow && effectiveNow >= previewSlot : liveStatus?.slotOpen;
+  const gateStage = !effectiveNow || effectiveNow < DEPARTURE ? "nov14-to-nov16" :
+    slotOpen ? "slot-pin-gate" : "nov16-to-slot";
+  const gateUnlocked = simulated ? isUnlocked && slotOpen : !!liveStatus?.unlocked;
+  const effectiveLocked = !showAdminDashboard && !gateUnlocked;
 
   useEffect(() => {
     onLockChange?.(effectiveLocked);
   }, [effectiveLocked, onLockChange]);
 
-  // Handle PIN input
-  const handleDigit = (digit: string) => {
-    if (gateStage !== "slot-pin-gate" || pin.length >= 4) return;
+  const handleDigit = async (digit: string) => {
+    if (checkingPin || gateStage !== "slot-pin-gate" || pin.length >= 4) return;
     const nextPin = pin + digit;
     setPin(nextPin);
-    setPinError(false);
+    setPinError("");
+    if (nextPin.length !== 4) return;
 
-    if (nextPin.length === 4) {
-      if (nextPin === CORRECT_PIN) {
-        setCelebrating(true);
-        try {
-          if (userId) localStorage.setItem(`olu:gate-unlocked:${userId}`, "1");
-          localStorage.setItem("olu:gate-unlocked:guest", "1");
-        } catch {}
-        setTimeout(() => {
-          setIsUnlocked(true);
-          setCelebrating(false);
-        }, 1200);
+    setCheckingPin(true);
+    try {
+      const result = simulated ? "ok" : (await getSupabase()!.rpc("anniversary_try_pin", { pin: nextPin })).data;
+      if (result === "ok") {
+        if (simulated) setIsUnlocked(true);
+        else if (userId) {
+          setStatus((current) => current?.data && current.userId === userId ?
+            { userId, data: { ...current.data, unlocked: true } } : current);
+          void refreshAccount();
+        }
       } else {
-        setPinError(true);
-        setTimeout(() => {
-          setPin("");
-          setPinError(false);
-        }, 1100);
+        setPin("");
+        setPinError(
+          result === "wait" ? "Too many attempts. Try again in 15 minutes." :
+          result === "wrong" ? "That orbit PIN didn’t match. Try again." :
+          result === "locked" ? "The PIN is available during your reserved slot." :
+          "Couldn’t verify the PIN. Please try again."
+        );
       }
+    } catch {
+      setPin("");
+      setPinError("Couldn’t verify the PIN. Please try again.");
+    } finally {
+      setCheckingPin(false);
     }
   };
 
   const handleBackspace = () => {
+    if (checkingPin) return;
     setPin((prev) => prev.slice(0, -1));
-    setPinError(false);
+    setPinError("");
   };
 
   const handleClear = () => {
+    if (checkingPin) return;
     setPin("");
-    setPinError(false);
+    setPinError("");
   };
 
   // Physical keyboard support for PIN
   useEffect(() => {
-    if (gateStage !== "slot-pin-gate" || isUnlocked) return;
+    if (gateStage !== "slot-pin-gate" || gateUnlocked) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") {
         handleDigit(e.key);
@@ -195,7 +195,7 @@ export function UniverseGate({
   });
 
   // If Sonu is viewing and not in preview mode, show full dashboard with admin preview bar
-  if (isSonu && !sonuPreviewMode) {
+  if (showAdminDashboard) {
     return (
       <>
         <div className="fixed top-[calc(0.5rem+env(safe-area-inset-top))] right-[calc(0.5rem+env(safe-area-inset-right))] z-50 flex items-center gap-1.5 rounded-full bg-midnight/90 border border-gold/30 px-3 py-1 text-[11px] font-medium text-gold backdrop-blur shadow-lg">
@@ -213,43 +213,44 @@ export function UniverseGate({
     );
   }
 
-  // If unlocked via PIN, render the unlocked website!
-  if (isUnlocked) {
-    return (
-      <>
-        {/* Subtle unlock badge with option to re-lock during tests */}
-        <div className="fixed bottom-3 right-3 z-50">
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                if (userId) localStorage.removeItem(`olu:gate-unlocked:${userId}`);
-                localStorage.removeItem("olu:gate-unlocked:guest");
-              } catch {}
-              setIsUnlocked(false);
-              setPin("");
-            }}
-            className="flex items-center gap-1.5 rounded-full bg-midnight/80 border border-lilac/25 px-2.5 py-1 text-[10px] text-lilac/70 hover:text-blush transition backdrop-blur"
-            title="Click to re-lock for testing"
-          >
-            <Lock className="h-3 w-3" /> Re-lock Gate
-          </button>
-        </div>
-        {children}
-      </>
-    );
+  if (!effectiveNow || (!simulated && userId && !liveStatus)) {
+    return <p role="status" className="py-10 text-center text-lilac">
+      {statusFailed ? "Couldn’t load your date slot. Retrying…" : "Checking your flight schedule…"}
+    </p>;
   }
 
-  // Countdowns
-  const countdownToMidnight = countdown(DEPARTURE_MIDNIGHT, effectiveNow);
-  const countdownToSlot = countdown(slotStartTime, effectiveNow);
+  if (mode === "supabase" && !userId && effectiveNow >= DEPARTURE) {
+    const returnPath = fromBoardingPass ? "/?from=boarding-pass" : fromLetter ? "/?from=letter" : "/";
+    return <div className="glass mx-auto max-w-lg rounded-3xl p-6 text-center">
+      <Link className="text-blush underline" href={`/login?next=${encodeURIComponent(returnPath)}`}>Sign in to see your anniversary gate</Link>
+    </div>;
+  }
 
-  const slotLabel = checkInData?.timeSlot ?? "14:00 to 16:00";
+  if (!simulated && effectiveNow >= DEPARTURE && liveStatus?.checkedIn && !liveStatus.letterOpened) {
+    return <div className="glass mx-auto max-w-lg rounded-3xl p-6 text-center">
+      <Link className="text-blush underline" href="/boardingpass">Return to your boarding pass and open your anniversary letter</Link>
+    </div>;
+  }
+
+  if (gateUnlocked) return children;
+
+  if (!simulated && effectiveNow >= DEPARTURE && (!liveStatus?.checkedIn || (!slotOpen && !slotStartTime))) {
+    return <div className="glass mx-auto max-w-lg space-y-4 rounded-3xl p-6 text-center">
+      <p>{liveStatus?.checkedIn ? "Your reserved date slot has ended." : "Online check-in has closed."} Ask Sonu for help opening your universe.</p>
+      <Link className="text-blush underline" href="/boardingpass">View your boarding pass</Link>
+    </div>;
+  }
+
+  const countdownToMidnight = countdown(DEPARTURE, effectiveNow);
+  const countdownToSlot = countdown(slotStartTime ?? effectiveNow, effectiveNow);
+  const slotLabel = slotStartTime?.getTime() === previewSlot.getTime() || !slotStartTime
+    ? checkInData?.timeSlot ?? "14:00 to 16:00"
+    : "21:00 to 23:00";
 
   return (
     <div className="relative min-h-[90vh] flex flex-col items-center justify-center px-4 py-8 text-center text-cloud">
       {/* Test simulation toolbar (for testing Nov 14 -> Nov 16 -> Slot flow) */}
-      <div className="mb-6 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl bg-midnight/80 border border-lilac/20 p-1.5 text-xs backdrop-blur shadow-md">
+      {canPreview && !fromBoardingPass && <div className="mb-6 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl bg-midnight/80 border border-lilac/20 p-1.5 text-xs backdrop-blur shadow-md">
         <span className="text-[10px] uppercase font-bold text-lilac/70 px-2 flex items-center gap-1">
           <Sparkles className="h-3 w-3 text-gold" /> Test Timeline:
         </span>
@@ -304,7 +305,7 @@ export function UniverseGate({
             Exit Preview
           </button>
         )}
-      </div>
+      </div>}
 
       {/* STAGE 1: Between Nov 14 (Check-in) and Nov 16 12:00 AM IST */}
       {gateStage === "nov14-to-nov16" && (
@@ -321,7 +322,7 @@ export function UniverseGate({
               <Plane className="h-3.5 w-3.5" /> Flight ILU-16 • Boarding Gate
             </span>
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
-              <UserCheck className="h-3.5 w-3.5" /> Passenger Checked In
+              <UserCheck className="h-3.5 w-3.5" /> {checkInData ? "Passenger Checked In" : "Flight ILU-16"}
             </span>
           </div>
 
@@ -330,7 +331,7 @@ export function UniverseGate({
               Passenger Yukku, hold onto your boarding pass.
             </h1>
             <p className="text-sm sm:text-base text-lilac">
-              Our 1st Anniversary Orbit departs on 16 November at midnight IST. The universe unlocks when our flight takes off.
+              Our 1st Anniversary Orbit departs on 16 November at midnight IST. At midnight you can open your letter. The site unlocks at your date slot.
             </p>
           </div>
 
@@ -473,7 +474,7 @@ export function UniverseGate({
         </motion.div>
       )}
 
-      {/* STAGE 3: Date Slot Arrived -> Secret PIN Gate (1101) */}
+      {/* STAGE 3: Secret PIN gate */}
       {gateStage === "slot-pin-gate" && (
         <motion.div
           key="stage3"
@@ -510,7 +511,7 @@ export function UniverseGate({
           <div className="rounded-xl bg-gold/10 border border-gold/25 p-3 text-xs text-gold flex items-center justify-center gap-2">
             <span>💳</span>
             <span>
-              <strong>Hint:</strong> Sonu’s first ATM PIN
+              <strong>Hint:</strong> Ask Sonu for your four-digit orbit code
             </span>
           </div>
 
@@ -549,17 +550,7 @@ export function UniverseGate({
                   exit={{ opacity: 0 }}
                   className="text-xs font-semibold text-rose-400"
                 >
-                  Nice try bubu! Think back to Sonu’s first bank card... 💳💕
-                </motion.p>
-              )}
-              {celebrating && (
-                <motion.p
-                  key="success"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-xs font-bold text-emerald-300 flex items-center justify-center gap-1.5"
-                >
-                  <CheckCircle2 className="h-4 w-4" /> Welcome home, my favourite person! Unlocking... 💕
+                  {pinError}
                 </motion.p>
               )}
             </AnimatePresence>
@@ -572,7 +563,7 @@ export function UniverseGate({
                 key={num}
                 type="button"
                 onClick={() => handleDigit(num)}
-                disabled={celebrating}
+                disabled={checkingPin}
                 className="flex h-12 items-center justify-center rounded-2xl bg-midnight/60 border border-lilac/20 text-lg font-semibold text-cloud hover:bg-midnight hover:border-gold/50 active:scale-95 transition"
               >
                 {num}
@@ -581,7 +572,7 @@ export function UniverseGate({
             <button
               type="button"
               onClick={handleClear}
-              disabled={celebrating}
+              disabled={checkingPin}
               className="flex h-12 items-center justify-center rounded-2xl bg-midnight/40 border border-lilac/15 text-xs font-medium text-lilac hover:text-cloud hover:bg-midnight active:scale-95 transition"
             >
               Clear
@@ -589,7 +580,7 @@ export function UniverseGate({
             <button
               type="button"
               onClick={() => handleDigit("0")}
-              disabled={celebrating}
+              disabled={checkingPin}
               className="flex h-12 items-center justify-center rounded-2xl bg-midnight/60 border border-lilac/20 text-lg font-semibold text-cloud hover:bg-midnight hover:border-gold/50 active:scale-95 transition"
             >
               0
@@ -597,7 +588,7 @@ export function UniverseGate({
             <button
               type="button"
               onClick={handleBackspace}
-              disabled={celebrating}
+              disabled={checkingPin}
               className="flex h-12 items-center justify-center rounded-2xl bg-midnight/40 border border-lilac/15 text-lilac hover:text-rose-400 hover:bg-midnight active:scale-95 transition"
               aria-label="Delete digit"
             >

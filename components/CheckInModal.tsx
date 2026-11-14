@@ -15,6 +15,7 @@ import {
   UserCheck,
   X
 } from "lucide-react";
+import { buildGoogleCalendarLinks } from "@/lib/calendar";
 import { Button } from "@/components/ui";
 
 export interface CheckInData {
@@ -49,7 +50,7 @@ export const TIME_SLOT_OPTIONS = [
 interface CheckInModalProps {
   open: boolean;
   onClose: () => void;
-  onComplete: (data: CheckInData) => Promise<void>;
+  onComplete: (data: CheckInData) => Promise<boolean>;
   initialData?: CheckInData | null;
 }
 
@@ -75,18 +76,33 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleFinish = async () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     const selectedSlot = timeSlot || TIME_SLOT_OPTIONS[2].label;
     const data: CheckInData = {
       seat: seat || "Beside me",
-      memory: memory.trim() || "The time we couldn't stop laughing 😂",
+      memory: memory.trim(),
       firstStop: firstStop || "A spontaneous day out",
       timeSlot: selectedSlot,
       checkedInAt: new Date().toISOString()
     };
 
+    // Reserve a tab during the click so browsers allow navigation after the save.
+    const calendarTab = window.open("about:blank", "_blank");
+    if (calendarTab) calendarTab.opener = null;
+
     try {
-      await onComplete(data);
+      if (!(await onComplete(data))) {
+        calendarTab?.close();
+        return;
+      }
+      const [calendar] = buildGoogleCalendarLinks({
+        slot: selectedSlot,
+        destination: data.firstStop,
+        memory: data.memory,
+        seat: data.seat
+      });
+      if (calendarTab && !calendarTab.closed) calendarTab.location.replace(calendar.href);
     } finally {
       setIsSubmitting(false);
     }
@@ -260,6 +276,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                 <div className="pt-2">
                   <div className="relative rounded-2xl border border-lilac/25 bg-midnight/60 p-3 focus-within:border-blush transition">
                     <textarea
+                      maxLength={500}
                       rows={4}
                       value={memory}
                       onChange={(e) => setMemory(e.target.value)}
@@ -317,7 +334,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                     Anniversary date time • 16 November
                   </h3>
                   <p className="mt-1 text-sm text-lilac">
-                    Choose when we celebrate together. Calendar links appear after check-in.
+                    Choose when we celebrate together. Google Calendar opens after check-in. If you choose both times, the evening link is on your boarding pass.
                   </p>
                 </div>
 
@@ -402,7 +419,7 @@ export function CheckInModal({ open, onClose, onComplete, initialData }: CheckIn
                     className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110"
                   >
                     <Calendar className="h-4 w-4 mr-1 text-midnight" />
-                    {isSubmitting ? "Saving check-in…" : "Complete check-in"}
+                    {isSubmitting ? "Saving check-in…" : "Check in & open Calendar"}
                   </Button>
                 </div>
               </motion.div>

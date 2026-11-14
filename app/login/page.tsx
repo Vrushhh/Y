@@ -5,12 +5,13 @@ import Link from "next/link";
 import { getSupabase } from "@/lib/supabase/client";
 import { isSupabaseConfigured, SITE_URL } from "@/lib/config";
 import { Button, Card, ErrorNote, Field, Input } from "@/components/ui";
+import { safeReturnPath } from "@/lib/return-path";
 import { Starfield } from "@/components/Starfield";
 
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/universe";
+  const next = safeReturnPath(params.get("next"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [magic, setMagic] = useState(false);
@@ -30,20 +31,26 @@ function LoginForm() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusy(true); setError(null);
-    const sb = getSupabase()!;
-    if (magic) {
-      const { error: err } = await sb.auth.signInWithOtp({
-        email, options: { shouldCreateUser: false, emailRedirectTo: `${SITE_URL}/auth/callback?next=${encodeURIComponent(next)}` }
-      });
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const sb = getSupabase()!;
+      if (magic) {
+        const { error: err } = await sb.auth.signInWithOtp({
+          email, options: { shouldCreateUser: false, emailRedirectTo: `${SITE_URL}/auth/callback?next=${encodeURIComponent(next)}` }
+        });
+        if (err) setError(err.message); else setSent(true);
+        return;
+      }
+      const { error: err } = await sb.auth.signInWithPassword({ email, password });
+      if (err) setError(err.message === "Invalid login credentials" ? "That email and password don’t match." : err.message);
+      else { router.replace(next); router.refresh(); }
+    } catch {
+      setError("Couldn’t connect. Please try signing in again.");
+    } finally {
       setBusy(false);
-      if (err) setError(err.message); else setSent(true);
-      return;
     }
-    const { error: err } = await sb.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (err) setError(err.message === "Invalid login credentials" ? "That email and password don’t match." : err.message);
-    else { router.replace(next); router.refresh(); }
   };
 
   return (

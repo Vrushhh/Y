@@ -16,20 +16,18 @@ import { useApp } from "@/components/providers/AppProvider";
 import { SITE_URL } from "@/lib/config";
 import { getSupabase } from "@/lib/supabase/client";
 import { countdown } from "@/lib/time";
+import { DEPARTURE, ISSUED, useBoardingClock } from "@/lib/boarding-clock";
 
-const LIVE_DASHBOARD_URL = `${SITE_URL}/`;
+const BOARDING_GATE_PATH = "/?from=boarding-pass";
 
-const ISSUED = new Date("2026-11-14T00:00:00+05:30");
-const DEPARTURE = new Date("2026-11-16T00:00:00+05:30");
 
 type Stage = "ticket" | "envelope" | "opening" | "letter";
 
 export default function Welcome() {
   const router = useRouter();
-  const { mode, ready, userId, email, relationship, toast } = useApp();
+  const { mode, ready, userId, email, toast } = useApp();
   const reducedMotion = useReducedMotion();
   const [stage, setStage] = useState<Stage>("ticket");
-  const [now, setNow] = useState<Date | null>(null);
   const [localCheckIn, setLocalCheckIn] = useState<CheckInData | null>(null);
   const [accountCheckIn, setAccountCheckIn] = useState<{ userId: string; data: CheckInData | null; failed?: boolean } | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -41,6 +39,7 @@ export default function Welcome() {
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [stubTorn, setStubTorn] = useState(false);
+  const [entering, setEntering] = useState(false);
   const envelopeButton = useRef<HTMLButtonElement>(null);
   const letterHeading = useRef<HTMLHeadingElement>(null);
 
@@ -82,9 +81,9 @@ export default function Welcome() {
     return () => { active = false; };
   }, [localCheckInMode, userId]);
 
-  // Generate scannable QR Code redirecting to the main website dashboard
+  // Tapping and scanning the ticket both open the boarding gate.
   useEffect(() => {
-    QRCode.toDataURL(LIVE_DASHBOARD_URL, {
+    QRCode.toDataURL(`${SITE_URL}${BOARDING_GATE_PATH}`, {
       margin: 1,
       width: 140,
       color: {
@@ -96,22 +95,11 @@ export default function Welcome() {
       .catch((err) => console.error("QR Code error:", err));
   }, []);
 
-  // Preview and time tick logic
-  useEffect(() => {
-    const offset =
-      preview === "carry-on" || preview === "checkin"
-        ? ISSUED.getTime() - Date.now() + 60_000
-        : preview === "departure"
-        ? DEPARTURE.getTime() - Date.now() + 60_000
-        : preview === "pre-checkin"
-        ? ISSUED.getTime() - Date.now() - 86_400_000
-        : 0;
-
-    const tick = () => setNow(new Date(Date.now() + offset));
-    tick();
-    const interval = window.setInterval(tick, 1000);
-    return () => window.clearInterval(interval);
-  }, [preview]);
+  const now = useBoardingClock(
+    preview === "carry-on" || preview === "checkin" ? ISSUED.getTime() + 60_000 :
+    preview === "departure" ? DEPARTURE.getTime() + 60_000 :
+    preview === "pre-checkin" ? ISSUED.getTime() - 86_400_000 : undefined
+  );
 
   useEffect(() => {
     if (stage !== "opening") return;
@@ -125,7 +113,7 @@ export default function Welcome() {
   const left = now ? countdown(issued ? DEPARTURE : ISSUED, now) : null;
 
   const handleCheckInComplete = async (data: CheckInData) => {
-    if (savingCheckIn.current) return;
+    if (savingCheckIn.current) return false;
     savingCheckIn.current = true;
     try {
       if (localCheckInMode) {
@@ -138,18 +126,19 @@ export default function Welcome() {
           .upsert({ user_id: userId, boarding_checkin: data }, { onConflict: "user_id" });
         if (error) throw error;
         setAccountCheckIn({ userId, data });
-
       }
       setCheckInModalOpen(false);
+      return true;
     } catch {
       toast("Your check-in couldn’t be saved. Please try again.", "error");
+      return false;
     } finally {
       savingCheckIn.current = false;
     }
   };
 
   const board = () => {
-    if (!boarding || !ready) return;
+    if (stubTorn || !boarding || !ready || (!localCheckInMode && !signedOut && !checkInData)) return;
     if (signedOut) {
       router.push("/login?next=%2Fboardingpass");
       return;
@@ -160,15 +149,20 @@ export default function Welcome() {
     }, 600);
   };
 
-  const enter = () => {
-    localStorage.setItem("olu:intro-done", "1");
-    if (mode === "supabase" && userId && relationship) {
-      void getSupabase()
-        ?.from("user_preferences")
-        .upsert({ user_id: userId, intro_completed: true }, { onConflict: "user_id" })
-        .then(() => undefined);
+  const enter = async () => {
+    if (entering) return;
+    setEntering(true);
+    try {
+      if (!localCheckInMode) {
+        const { data, error } = await getSupabase()!.rpc("anniversary_open_letter");
+        if (error || !data) throw new Error("Couldn’t save your boarding progress.");
+      }
+      router.push(preview === "departure" ? "/?test-gate=nov16-morning" : "/?from=letter");
+    } catch {
+      toast("Couldn’t save your boarding progress. Please try again.", "error");
+    } finally {
+      setEntering(false);
     }
-    router.push("/universe");
   };
 
   const seatLabel = checkInData?.seat || "Beside me";
@@ -267,13 +261,13 @@ export default function Welcome() {
                   >
                     {qrDataUrl ? (
                       <Link
-                        href="/"
-                        title="Scan or tap to open Our Little Universe website"
+                        href={BOARDING_GATE_PATH}
+                        title="Scan or tap to open the boarding countdown"
                         className="relative block rounded-lg bg-cream/90 p-1.5 shadow-sm transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                       >
                         <Image
                           src={qrDataUrl}
-                          alt="Scan barcode or tap to open Our Little Universe website"
+                          alt="Scan or tap to open the boarding countdown"
                           width={76}
                           height={76}
                           className="h-16 w-16 sm:h-20 sm:w-20"
@@ -293,7 +287,7 @@ export default function Welcome() {
                       aria-hidden="true"
                     />
                     <span className="text-[9px] font-mono tracking-widest text-[#654367] uppercase">
-                      Scan to Open
+                      Scan for Countdown
                     </span>
                   </motion.div>
                 ) : (
@@ -319,14 +313,17 @@ export default function Welcome() {
                     <h2 className="font-display text-2xl sm:text-3xl text-cloud">
                       Ready for our next orbit, Yukku?
                     </h2>
+                    {!localCheckInMode && !signedOut && !checkInLoading && !checkInData && (
+                      <p className="text-sm text-lilac">{savedAccountCheckIn?.failed ? "Couldn’t load your check-in. Refresh to try again." : "Online check-in is closed. Ask Sonu for help with your pass."}</p>
+                    )}
                   </div>
                   <Button
                     size="lg"
                     onClick={board}
-                    disabled={!ready}
+                    disabled={!ready || (!localCheckInMode && !signedOut && !checkInData)}
                     className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110 text-base px-4 py-3 sm:px-8"
                   >
-                    Now boarding <ArrowRight className="h-5 w-5 ml-1.5" aria-hidden="true" />
+                    {signedOut && !localCheckInMode ? "Sign in to board" : "Now boarding"} <ArrowRight className="h-5 w-5 ml-1.5" aria-hidden="true" />
                   </Button>
                 </div>
               ) : issued ? (
@@ -396,7 +393,7 @@ export default function Welcome() {
                     </div>
                   </div>
                 )
-              ) : (
+              ) : now ? (
                 /* Pre-checkin (Before 14 November) */
                 <div className="space-y-2 py-2">
                   <p className="text-xs uppercase tracking-wider text-lilac font-bold">Online Check-in Opens in</p>
@@ -405,11 +402,11 @@ export default function Welcome() {
                   </p>
                   <p className="text-xs text-lilac">14 November • Midnight IST</p>
                 </div>
-              )}
+              ) : <p role="status" className="text-sm text-lilac">Checking the flight schedule…</p>}
             </section>
 
             {/* Carry-on section revealed after check-in */}
-            {issued && !boarding && checkInData && (
+            {issued && checkInData && (
               ready && (!signedOut || localCheckInMode) ? (
                 <CarryOn checkInData={checkInData} />
               ) : (
@@ -462,6 +459,7 @@ export default function Welcome() {
               <Button
                 size="lg"
                 onClick={enter}
+                loading={entering}
                 className="bg-gradient-to-r from-blush via-gold to-lilac text-midnight font-bold shadow-glow hover:brightness-110 px-8 py-3 text-base"
               >
                 Enter our universe <ArrowRight className="h-5 w-5 ml-1.5" aria-hidden="true" />
@@ -472,12 +470,12 @@ export default function Welcome() {
       </AnimatePresence>
 
       {/* 3-Question Check-in Ritual Modal */}
-      <CheckInModal
+      {checkInModalOpen && <CheckInModal
         open={checkInModalOpen}
         onClose={() => setCheckInModalOpen(false)}
         onComplete={handleCheckInComplete}
         initialData={checkInData}
-      />
+      />}
     </main>
   );
 }
