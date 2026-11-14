@@ -53,21 +53,41 @@ export function UniverseGate({
   const [previewGate, setPreviewGate] = useState<string | null>(null);
   const [sonuPreviewMode, setSonuPreviewMode] = useState(false);
 
-  // Check query params for testing: ?test-gate=nov14 | nov16-morning | slot
+  // Check query params for testing: ?test-gate=nov14 | nov16-morning | slot | reset-pin=1 | as=yukta
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (isSonu || mode === "preview") setPreviewGate(params.get("test-gate"));
-    setIsUnlocked(Boolean(userId) && localStorage.getItem(`olu:gate-unlocked:${userId}`) === "1");
+    const testGateParam = params.get("test-gate");
+    const asYukta = params.get("as") === "yukta" || Boolean(testGateParam);
+
+    if (asYukta) setSonuPreviewMode(true);
+    if (testGateParam) setPreviewGate(testGateParam);
+
+    const shouldRelock = params.get("reset-pin") === "1" || params.get("relock") === "1";
+    if (shouldRelock) {
+      setIsUnlocked(false);
+      try {
+        if (userId) localStorage.removeItem(`olu:gate-unlocked:${userId}`);
+        localStorage.removeItem("olu:gate-unlocked:guest");
+      } catch {}
+    } else {
+      const unlocked =
+        (Boolean(userId) && localStorage.getItem(`olu:gate-unlocked:${userId}`) === "1") ||
+        localStorage.getItem("olu:gate-unlocked:guest") === "1";
+      setIsUnlocked(unlocked);
+    }
+
     setCheckInData(null);
-    if (mode === "preview") {
-      try { setCheckInData(JSON.parse(localStorage.getItem("olu:checkin") ?? "null")); } catch {}
-      return;
+    if (mode === "preview" || asYukta) {
+      try {
+        const stored = localStorage.getItem(mode === "preview" ? "olu:checkin" : "olu:checkin-dev");
+        if (stored) setCheckInData(JSON.parse(stored));
+      } catch {}
     }
     if (!userId) return;
     let active = true;
     getSupabase()?.from("user_preferences").select("boarding_checkin").eq("user_id", userId).maybeSingle()
-      .then(({ data }) => { if (active) setCheckInData(data?.boarding_checkin ?? null); });
+      .then(({ data }) => { if (active && data?.boarding_checkin) setCheckInData(data.boarding_checkin); });
     return () => { active = false; };
   }, [isSonu, mode, userId]);
 
@@ -122,7 +142,7 @@ export function UniverseGate({
 
   // Handle PIN input
   const handleDigit = (digit: string) => {
-    if (gateStage !== "slot-pin-gate" || (!userId && mode !== "preview") || pin.length >= 4) return;
+    if (gateStage !== "slot-pin-gate" || pin.length >= 4) return;
     const nextPin = pin + digit;
     setPin(nextPin);
     setPinError(false);
@@ -132,6 +152,7 @@ export function UniverseGate({
         setCelebrating(true);
         try {
           if (userId) localStorage.setItem(`olu:gate-unlocked:${userId}`, "1");
+          localStorage.setItem("olu:gate-unlocked:guest", "1");
         } catch {}
         setTimeout(() => {
           setIsUnlocked(true);
@@ -192,10 +213,6 @@ export function UniverseGate({
     );
   }
 
-  if (!userId && mode !== "preview" && gateStage === "slot-pin-gate") {
-    return <div className="glass mx-auto max-w-lg rounded-3xl p-6 text-center"><Link href="/login" className="text-blush underline">Sign in to unlock Our Little Universe</Link></div>;
-  }
-
   // If unlocked via PIN, render the unlocked website!
   if (isUnlocked) {
     return (
@@ -207,6 +224,7 @@ export function UniverseGate({
             onClick={() => {
               try {
                 if (userId) localStorage.removeItem(`olu:gate-unlocked:${userId}`);
+                localStorage.removeItem("olu:gate-unlocked:guest");
               } catch {}
               setIsUnlocked(false);
               setPin("");
