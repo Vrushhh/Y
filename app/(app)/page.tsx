@@ -11,7 +11,7 @@ import { Counter } from "@/components/Counter";
 import { MediaImage } from "@/components/MediaInputs";
 import { DemoBadge } from "@/components/ui";
 import { countdown, formatDate, nextAnniversary, ordinal } from "@/lib/time";
-import { getAuthoritativeTodayReason, type JarReason } from "@/lib/jar";
+import { getAuthoritativeTodayReason, getISTDateString, type JarReason } from "@/lib/jar";
 import { buildGoogleCalendarLinks } from "@/lib/calendar";
 
 const EXPERIENCES = [
@@ -46,9 +46,6 @@ export default function Universe() {
 
   useEffect(() => {
     setNow(new Date());
-    getAuthoritativeTodayReason().then((res) => {
-      setTodayReason({ reason: res.reason, sequence: res.sequence });
-    });
     const t = setInterval(() => setNow(new Date()), 60_000);
 
     return () => clearInterval(t);
@@ -90,6 +87,16 @@ export default function Universe() {
       document.removeEventListener("visibilitychange", refreshCheckIn);
     };
   }, [canTrackCheckIn, userId, relationship?.id, toast]);
+
+  const jarDate = now ? getISTDateString(now) : "";
+  useEffect(() => {
+    if (!jarDate) return;
+    let active = true;
+    getAuthoritativeTodayReason().then((res) => {
+      if (active) setTodayReason({ reason: res.reason, sequence: res.sequence });
+    });
+    return () => { active = false; };
+  }, [jarDate]);
 
   const anniversary = now ? nextAnniversary(startDate, now) : null;
   const left = anniversary && now ? countdown(anniversary.date, now) : null;

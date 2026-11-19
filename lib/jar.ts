@@ -63,7 +63,7 @@ export function diffCalendarDays(startDateStr: string, targetDateStr: string): n
 /**
  * Deterministic calculation of current sequence number (1 to 365).
  * - Day 1 on start date.
- * - Caps at 365 without premature wrapping or resetting.
+ * - Repeats the collection after every 365 calendar days.
  */
 export function getSequenceNumberForDate(
   targetDateStr: string,
@@ -83,7 +83,7 @@ export function getSequenceNumberForDate(
       isCompleted: false
     };
   }
-  const sequence = Math.min(TOTAL_REASONS, diff + 1);
+  const sequence = (diff % TOTAL_REASONS) + 1;
   return {
     sequence,
     dayIndex: diff,
@@ -105,7 +105,7 @@ export function getCountdownToNextMidnightIST(now: Date = new Date()): {
   // Find current time components in Asia/Kolkata
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: TIMEZONE,
-    hour12: false,
+    hourCycle: "h23",
     hour: "numeric",
     minute: "numeric",
     second: "numeric"

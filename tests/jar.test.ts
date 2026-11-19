@@ -71,7 +71,7 @@ describe("Jar of 365 Reasons", () => {
     expect(seqAfter).toBe(2);
   });
 
-  it("handles Day 365 and caps at completion without wrap-around reset", () => {
+  it("continues rotating after the first 365 days", () => {
     const startDate = "2025-11-16";
     // 364 days later is Day 365
     // 2025-11-16 + 364 days = 2026-11-15
@@ -79,9 +79,11 @@ describe("Jar of 365 Reasons", () => {
     expect(day365.sequence).toBe(365);
     expect(day365.isCompleted).toBe(true);
 
-    // Days past 365 remain capped at 365 and completed
+    // The next cycle starts immediately after day 365.
     const day366 = getSequenceNumberForDate("2026-11-16", startDate);
-    expect(day366.sequence).toBe(365);
+    expect(day366.sequence).toBe(1);
+    expect(getSequenceNumberForDate("2026-11-19", startDate).sequence).toBe(4);
+    expect(getSequenceNumberForDate("2027-11-16", startDate).sequence).toBe(1);
     expect(day366.isCompleted).toBe(true);
   });
 
@@ -93,6 +95,7 @@ describe("Jar of 365 Reasons", () => {
     expect(countdown.minutes).toBe(5);
     expect(countdown.seconds).toBe(0);
     expect(countdown.formatted).toBe("00:05:00");
+    expect(getCountdownToNextMidnightIST(new Date("2026-11-08T18:30:00Z")).hours).toBe(24);
   });
 
   it("enforces boyfriend-only admin authorization", () => {

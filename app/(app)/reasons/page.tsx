@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Calendar,
@@ -45,7 +45,6 @@ export default function ReasonsPage() {
   const [sequence, setSequence] = useState(1);
   const [istDateStr, setIstDateStr] = useState("");
   const [countdownStr, setCountdownStr] = useState("00:00:00");
-  const [isCompleted, setIsCompleted] = useState(false);
   const [isBeforeStart, setIsBeforeStart] = useState(false);
 
   // Note Modal / Interaction state
@@ -61,7 +60,7 @@ export default function ReasonsPage() {
   const [previewTomorrowOpen, setPreviewTomorrowOpen] = useState(false);
 
   // Load authoritative today reason and settings
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const sett = await fetchJarSettings();
       setSettings(sett);
@@ -72,13 +71,12 @@ export default function ReasonsPage() {
       setSequence(todayData.sequence);
       setIstDateStr(todayData.istDate);
       setIsBeforeStart(todayData.isBeforeStart);
-      setIsCompleted(todayData.isCompleted);
 
       const all = await fetchAllReasons();
       setAllReasons(all);
 
       // Tomorrow reason calculation
-      const tomorrowSeq = Math.min(TOTAL_REASONS, todayData.sequence + 1);
+      const tomorrowSeq = (todayData.sequence % TOTAL_REASONS) + 1;
       const tom = all.find((r) => r.sequence_number === tomorrowSeq) || all[0];
       setTomorrowReason(tom);
     } catch (err) {
@@ -86,22 +84,30 @@ export default function ReasonsPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadData();
   }, []);
 
-  // Countdown timer to midnight IST (updates every second)
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  // Refresh after midnight and when returning to a tab left open overnight.
   useEffect(() => {
     const updateCountdown = () => {
-      const { formatted } = getCountdownToNextMidnightIST(new Date());
-      setCountdownStr(formatted);
+      const now = new Date();
+      setCountdownStr(getCountdownToNextMidnightIST(now).formatted);
+      if (istDateStr && getISTDateString(now) !== istDateStr) void loadData();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") updateCountdown();
     };
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [istDateStr, loadData]);
 
   // Save new start date (Admin only)
   const handleSaveStartDate = async () => {
@@ -133,7 +139,7 @@ export default function ReasonsPage() {
     if (!settings || !allReasons.length) return [];
     const list = [];
     for (let offset = 1; offset <= 7; offset++) {
-      const nextSeq = Math.min(TOTAL_REASONS, sequence + offset);
+      const nextSeq = ((sequence - 1 + offset) % TOTAL_REASONS) + 1;
       const r = allReasons.find((item) => item.sequence_number === nextSeq);
       list.push({ offset, sequence: nextSeq, reason: r });
     }
@@ -627,7 +633,7 @@ export default function ReasonsPage() {
                   </span>
                 </div>
                 <span className="text-[11px] text-lilac bg-midnight/40 px-2 py-0.5 rounded-full">
-                  Reason #{Math.min(TOTAL_REASONS, sequence + 1).toString().padStart(3, "0")}
+                  Reason #{((sequence % TOTAL_REASONS) + 1).toString().padStart(3, "0")}
                 </span>
               </div>
               <p className="font-hand text-xl text-cream leading-relaxed">
